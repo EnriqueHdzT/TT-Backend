@@ -1,14 +1,24 @@
 from django.db import models
 
 class userData(models.Model):
+    GENDERS = (
+        (0, "Male"),
+        (1, "Female"),
+        (2, "Other"),
+    )
+
+    firstLastName = models.CharField(max_length=128)
+    secondLastName = models.CharField(max_length=128)
+    name = models.CharField(max_length=128)
+    dateOfBirth = models.DateField(null=True, default=None)
+    gender = models.PositiveSmallIntegerField(choices=GENDERS, default=2)
+    studentId = models.CharField(max_length=10)
+    career = models.CharField(max_length=128)
     email = models.EmailField()
-    first_name = models.CharField(max_length=128)
-    last_name = models.CharField(max_length=128)
-    phone_number = models.SmallIntegerField(unique=True)
+    phoneNumber = models.SmallIntegerField(unique=True)
 
     def __str__(self):
-        return self.email
-
+        return self.name
 
 class credentials(models.Model):
     email = models.EmailField(primary_key=True)
