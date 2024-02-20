@@ -19,10 +19,10 @@ return new class extends Migration
             $table->string('second_lastname')->nullable();
             $table->string('name')->nullable();
             $table->date('birth_date')->nullable();
-            $table->enum('gender', ['male', 'female', 'other'])->nullable();
+            $table->enum('gender', ['male', 'female', 'other'])->default('other');
             $table->string('staff_ID', 10)->unique()->nullable();
-            $table->enum('school', ['ISW', 'ICD', 'IIA'])->nullable();
-            $table->integer('academy')->nullable();
+            $table->string('school')->default('ESCOM');
+            $table->string('academy')->nullable();
             $table->string('altern_email')->nullable();
             $table->string('phone_number', 15)->nullable();
             $table->timestamps();

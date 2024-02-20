@@ -34,6 +34,10 @@ class AuthController extends Controller
 
         return response($response, 201);
     }
+    public function login(Request $request) {
+        $response = ["Loged in Sucessesfully"];
+        return response($response,200);
+    }
 
     public function logout(Request $request) {
         auth()->user()->tokens()->delete();

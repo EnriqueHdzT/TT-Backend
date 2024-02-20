@@ -19,9 +19,9 @@ return new class extends Migration
             $table->string('second_lastname')->nullable();
             $table->string('name')->nullable();
             $table->date('birth_date')->nullable();
-            $table->enum('gender', ['male', 'female', 'other'])->nullable();
+            $table->enum('gender', ['male', 'female', 'other'])->default('other');
             $table->string('student_ID', 10)->unique()->nullable();
-            $table->enum('career', ['ISW', 'ICD', 'IIA'])->nullable();
+            $table->enum('career', ['ISW', 'ICD', 'IIA'])->default('ISW');
             $table->integer('curriculum')->nullable();
             $table->string('altern_email')->nullable();
             $table->string('phone_number', 15)->nullable();
