@@ -14,8 +14,8 @@ class StudentController extends Controller
     public function createStudent(Request $request)
     {
         $request->validate([
-            'first_lastName' => 'string',
-            'second_lastName' => 'string',
+            'first_lastName' => 'required|string',
+            'second_lastName' => 'required|string',
             'name' => 'required|string',
             'student_ID' => 'required|string|unique:students,student_ID',
             'career' => 'required|in:ISW,IIA,ICD',
