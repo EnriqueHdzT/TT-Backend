@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 
 use App\Models\User;
 use App\Models\Staff;
-use App\Models\Portocol;
+use App\Models\Protocol;
 
 class ProtocolController extends Controller
 {
