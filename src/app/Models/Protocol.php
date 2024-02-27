@@ -19,9 +19,9 @@ class Protocol extends Model
     ];
 
     // Definir la relación con el modelo User
-    public function protocol()
+    public function user()
     {
-        return $this->belongsTo(Protocol::class);
+        return $this->belongsTo(User::class);
     }
 
     protected static function boot()
