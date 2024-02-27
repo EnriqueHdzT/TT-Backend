@@ -34,21 +34,87 @@ class StudentController extends Controller
         $student = new Student();
         // Asignar otros campos del estudiante si es necesario
         $student->user_id = $user->id;
+        $student->lastname = $request->first_lastName;
+        $student->second_lastname = $request->second_lastName;
+        $student->name = $request->name;
+        $student->student_ID = $request->student_ID;
+        $student->career = $request->career;
+        $student->curriculum = $request->curriculum;
+
         $student->save();
 
         return response()->json(['message' => 'Estudiante creado exitosamente'], 201);
     }
 
-    public function deleteStudent(Request $request) {
+    public function readStudent($id)
+    {
+        $student = Student::find($id);
+
+        if (!$student) {
+            return response()->json(['message' => 'Estudiante no encontrado'], 404);
+        }
+
+        $studentData = $student->toArray();
+        unset($studentData['user_id']);
+        unset($studentData['updated_at']);
+        unset($studentData['created_at']);
+
+        return response()->json(['student' => $studentData], 200);
+    }
+
+    public function readStudents()
+    {
+        $students = Student::all();
+        $formattedStudents = [];
+
+        foreach ($students as $student) {
+            $studentData = $student->toArray();
+            unset($studentData['user_id']);
+            unset($studentData['updated_at']);
+            unset($studentData['created_at']);
+            $formattedStudents[] = $studentData;
+        }
+
+        return response()->json(['students' => $formattedStudents], 200);
+    }
+
+    public function updateStudent(Request $request, $id)
+    {
         $request->validate([
-            'id' => 'required|Integer',
+            'first_lastName' => 'required|string',
+            'second_lastName' => 'required|string',
+            'name' => 'required|string',
+            'student_ID' => 'required|string|unique:students,student_ID,' . $id,
+            'career' => 'required|in:ISW,IIA,ICD',
+            'curriculum' => 'required|date_format:Y',
         ]);
-        $student = Student::find($request->id);
+
+        $student = Student::find($id);
+
+        if (!$student) {
+            return response()->json(['message' => 'Estudiante no encontrado'], 404);
+        }
+
+        $student->lastname = $request->first_lastName;
+        $student->second_lastname = $request->second_lastName;
+        $student->name = $request->name;
+        $student->student_ID = $request->student_ID;
+        $student->career = $request->career;
+        $student->curriculum = $request->curriculum;
+        $student->save();
+
+        return response()->json(['message' => 'Datos del estudiante actualizados exitosamente'], 200);
+    }
+
+    public function deleteStudent($id) {
+        $student = Student::find($id);
 
         if (!$student) {    
             return response()->json(['message' => 'Estudiante no encontrado'], 404);
         }
 
+        $user = User::find($student->user_id);
+        $user->delete();
         $student->delete();
         return response()->json(['message' => 'Estudiante eliminado exitosamente'], 200);
     }

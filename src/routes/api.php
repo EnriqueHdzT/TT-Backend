@@ -19,10 +19,20 @@ use Illuminate\Support\Facades\Route;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
+
+// Student routes
 Route::post('/addStudent', [StudentController::class, 'createStudent']);
-Route::delete('/addStudent', [StudentController::class, 'deleteStudent']);
+Route::get('/addStudent/{id}', [StudentController::class, 'readStudent']);
+Route::get('/addStudent', [StudentController::class, 'readStudents']);
+Route::put('/addStudent/{id}', [StudentController::class, 'updateStudent']);
+Route::delete('/addStudent/{id}', [StudentController::class, 'deleteStudent']);
+
+// Staff routes
 Route::post('/addStaff', [StaffController::class, 'createStaff']);
-Route::delete('/addStaff', [StaffController::class, 'deleteStaff']);
+Route::get('/addStaff/{id}', [StaffController::class, 'readStaff']);
+Route::get('/addStaff', [StaffController::class, 'readStaffs']);
+Route::put('/addStaff/{id}', [StaffController::class, 'updateStaff']);
+Route::delete('/addStaff/{id}', [StaffController::class, 'deleteStaff']);
 
 
 // Protected routes
