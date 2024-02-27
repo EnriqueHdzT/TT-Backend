@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 
 use App\Models\User;
 use App\Models\Staff;
+use App\Models\Portocol;
 
 class ProtocolController extends Controller
 {
@@ -22,7 +23,7 @@ class ProtocolController extends Controller
         ]);
         
 
-        return response()->json(['message' => 'Protocol creado exitosamente'], 201);
+        return response()->json(['message' => 'Protocolo creado exitosamente'], 201);
     }
 
     public function readProtocol($id)
