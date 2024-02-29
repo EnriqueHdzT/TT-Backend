@@ -24,15 +24,11 @@ class ProtocolController extends Controller
             'protocol_doc' => 'binary',
         ]);
     
-    $user = new User();
-    $user->email = $request->email;
-    $password = Str::random(12);
-    $user->password = bcrypt($password);
-    $user->save();
-
+    $userId = auth()->id();
     $protocol = new Protocol();
-    $protocol->protocol_id = $user->id; 
+    $protocol->user_id = $userId;
     $protocol->save();
+
         
 
         return response()->json(['message' => 'Protocolo creado exitosamente'], 201);
