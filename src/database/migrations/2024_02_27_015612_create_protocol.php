@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('protocol', function (Blueprint $table) {
+        Schema::create('protocols', function (Blueprint $table) {
             $table->id();
             $table->foreignId('protocol_id')->constrained()->onDelete('cascade');
             $table->string('student_ID', 10)->unique()->nullable();
