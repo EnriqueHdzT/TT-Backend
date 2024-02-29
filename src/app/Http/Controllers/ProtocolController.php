@@ -8,7 +8,9 @@ use Illuminate\Support\Str;
 
 use App\Models\User;
 use App\Models\Staff;
+use App\Models\Student;
 use App\Models\Protocol;
+
 
 class ProtocolController extends Controller
 {
@@ -47,7 +49,7 @@ class ProtocolController extends Controller
         $protocols = Protocol::all();
         $formattedProtocols = [];
 
-        foreach ($students as $protocol) {
+        foreach ($protocols as $protocol) {
             $protocolData = $protocol->toArray();
             unset($protocolData['protocol_id']);
             unset($protocolData['updated_at']);
@@ -90,6 +92,7 @@ class ProtocolController extends Controller
         if (!$protocol) {    
             return response()->json(['message' => 'Protocolo no encontrado'], 404);
         }
+
 
         $user = User::find($protocol->protocol_id);
         $user->delete();
