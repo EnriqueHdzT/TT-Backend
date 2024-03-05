@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
@@ -35,8 +36,13 @@ class AuthController extends Controller
         return response($response, 201);
     }
     public function login(Request $request) {
-        $response = ["Loged in Sucessesfully"];
-        return response($response,200);
+        $credentials = $request->only('email', 'password');
+        if (Auth::attempt($credentials)) {
+            $token = Auth::user()->createToken('AuthToken')->plainTextToken;
+            return response()->json(['token' => $token], 200);
+        }
+    
+        return response()->json(['message' => 'Invalid credentials'], 401);
     }
 
     public function logout(Request $request) {
