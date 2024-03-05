@@ -21,8 +21,14 @@ class ProtocolController extends Controller
             'student_ID' => 'required|string|unique:students,student_ID',
             'staff_ID' => 'required|string|unique:staff,staff_ID',
             'keywords' => 'required|string',
-            'protocol_doc' => 'required|binary',
+            'protocol_doc' => 'binary',
         ]);
+    
+    $userId = auth()->id();
+    $protocol = new Protocol();
+    $protocol->user_id = $userId;
+    $protocol->save();
+
         
 
         return response()->json(['message' => 'Protocolo creado exitosamente'], 201);

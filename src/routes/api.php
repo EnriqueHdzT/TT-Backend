@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StaffController;
+use App\Http\Controllers\ProtocolController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -34,6 +35,13 @@ Route::get('/addStaff/{id}', [StaffController::class, 'readStaff']);
 Route::get('/addStaff', [StaffController::class, 'readStaffs']);
 Route::put('/addStaff/{id}', [StaffController::class, 'updateStaff']);
 Route::delete('/addStaff/{id}', [StaffController::class, 'deleteStaff']);
+
+// Protocol routes
+Route::post('/addProtocol', [ProtocolController::class, 'createProtocol']);
+Route::get('/addProtocol/{id}', [ProtocolController::class, 'readProtocol']);
+Route::get('/addProtocol', [ProtocolController::class, 'readProtocols']);
+Route::put('/addProtocol/{id}', [ProtocolController::class, 'updateProtocol']);
+Route::delete('/addProtocol/{id}', [ProtocolController::class, 'deleteProtocol']);
 
 
 // Protected routes
