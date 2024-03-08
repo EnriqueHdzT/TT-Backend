@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 
@@ -46,9 +47,17 @@ class AuthController extends Controller
     }
 
     public function logout(Request $request) {
-        auth()->user()->tokens()->delete();
-        return [
-            'message' => 'Logged Out'
-        ];
+        $user = Auth::user();
+        $tokenValue = $request->bearerToken();
+
+        if ($user && $tokenValue) {
+            $deleted = $user->tokens()->where('token', hash('sha256', substr($tokenValue, 3)))->delete();
+
+            if ($deleted) {
+                return response()->json(['message' => 'Token eliminado exitosamente']);
+            }
+        }
+
+        return response()->json(['message' => 'No se encontró ningún token para eliminar'], 404);
     }
 }
