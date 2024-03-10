@@ -4,31 +4,24 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
+class CreateProtocolsTable extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
+    public function up()
     {
         Schema::create('protocols', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('protocol_id')->constrained()->onDelete('cascade');
-            $table->string('student_ID', 10)->unique()->nullable();
-            $table->string('title_protocol')->nullable();
-            $table->string('staff_ID', 10)->unique()->nullable();
-            $table->string('keywords')->nullable();
-            $table->binary('protocol_doc')->nullable();
+            $table->string('title');
+            $table->string('protocol_id')->unique();
+            $table->enum('status', ['waiting', 'validated', 'classified', 'evaluated', 'active', 'canceled'])->default('waiting');
+            $table->json('keywords')->nullable();
+            $table->binary('pdf')->nullable();
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('protocols');
     }
-};
+}
+

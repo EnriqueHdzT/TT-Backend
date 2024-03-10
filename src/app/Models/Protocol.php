@@ -11,25 +11,24 @@ class Protocol extends Model
 
     protected $fillable = [
         'protocol_id',
-        'student_ID',
-        'title_protocol',
-        'staff_ID',
+        'title',
+        'status',
         'keywords',
-        'protocol_doc',
+        'pdf',
     ];
 
-    // Definir la relación con el modelo User
-    public function user()
+    public function students()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsToMany(Student::class, 'protocol_students')->withTimestamps()->limit(4);
     }
 
-    protected static function boot()
+    public function directors()
     {
-        parent::boot();
+        return $this->belongsToMany(Staff::class, 'protocol_directors')->withTimestamps()->limit(2);
+    }
 
-        static::deleting(function ($protocol) {
-            $protocol->user()->delete();
-        });
+    public function sinodales()
+    {
+        return $this->belongsToMany(Staff::class, 'protocol_sinodales')->withTimestamps()->limit(3);
     }
 }

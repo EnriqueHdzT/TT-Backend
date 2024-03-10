@@ -28,6 +28,11 @@ class Student extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function protocols()
+    {
+        return $this->belongsToMany(Protocol::class, 'protocol_students')->withTimestamps();
+    }
+
     protected static function boot()
     {
         parent::boot();
