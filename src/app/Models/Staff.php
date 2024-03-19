@@ -18,7 +18,7 @@ class Staff extends Model
         'birth_date',
         'gender',
         'staff_ID',
-        'school',
+        'precedence',
         'academy',
         'altern_email',
         'phone_number',

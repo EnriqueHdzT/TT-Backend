@@ -21,7 +21,7 @@ return new class extends Migration
             $table->date('birth_date')->nullable();
             $table->enum('gender', ['male', 'female', 'other'])->default('other');
             $table->string('staff_ID', 10)->unique()->nullable();
-            $table->string('school')->default('ESCOM');
+            $table->string('precedence')->default('ESCOM');
             $table->string('academy')->nullable();
             $table->string('altern_email')->nullable();
             $table->string('phone_number', 15)->nullable();

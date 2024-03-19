@@ -29,7 +29,7 @@ class ProtocolController extends Controller
             'staffs.*.first_lastName' => 'string',
             'staffs.*.second_lastName' => 'string',
             'staffs.*.staff_ID' => 'string',
-            'staffs.*.school' => 'string',
+            'staffs.*.precedence' => 'string',
             'staffs.*.academy' => 'string',
             'staffs.*.pdf' => 'file|mimes:pdf',
             'keywords' => 'required|array|max:4',
@@ -71,6 +71,8 @@ class ProtocolController extends Controller
                 }
                 $newUser = new User();
                 $newUser->email = $student['email'];
+                // TODO : Manage what to do with passwords
+                $newUser->password = "ghola";
                 $newUser->save();
                 
                 $newStudent = new Student();
@@ -103,7 +105,7 @@ class ProtocolController extends Controller
             $staffEmail = $staff['email'];
             $staffIDs[] = $staff['staff_ID'];
             $staffEmails[] = $staff['email'];
-            if ($staff['school'] === 'ESCOM') {
+            if ($staff['precedence'] === 'ESCOM') {
                 $hasESCOM = true;
             }
             $existingStaff = User::where('email', $staffEmail)->first();
@@ -122,7 +124,7 @@ class ProtocolController extends Controller
             return response()->json(['error' => 'Duplicate staff IDs or emails'], 400);
         }
         if (!$hasESCOM) {
-            return response()->json(['error' => 'At least one staff member must have school ESCOM'], 400);
+            return response()->json(['error' => 'At least one staff member must have precedence ESCOM'], 400);
         }
         return response()->json($request->students, 201);
     }
