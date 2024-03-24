@@ -17,7 +17,7 @@ class StudentController extends Controller
             'first_lastName' => 'required|string',
             'second_lastName' => 'required|string',
             'name' => 'required|string',
-            'student_ID' => 'required|string|unique:students,student_ID',
+            'student_id' => 'required|string|unique:students,student_id',
             'career' => 'required|in:ISW,IIA,ICD',
             'curriculum' => 'required|date_format:Y',
             'email' => 'required|string|unique:users,email',
@@ -37,7 +37,7 @@ class StudentController extends Controller
         $student->lastname = $request->first_lastName;
         $student->second_lastname = $request->second_lastName;
         $student->name = $request->name;
-        $student->student_ID = $request->student_ID;
+        $student->student_id = $request->student_id;
         $student->career = $request->career;
         $student->curriculum = $request->curriculum;
 
@@ -84,7 +84,7 @@ class StudentController extends Controller
             'first_lastName' => 'required|string',
             'second_lastName' => 'required|string',
             'name' => 'required|string',
-            'student_ID' => 'required|string|unique:students,student_ID,' . $id,
+            'student_id' => 'required|string|unique:students,student_id,' . $id,
             'career' => 'required|in:ISW,IIA,ICD',
             'curriculum' => 'required|date_format:Y',
         ]);
@@ -98,7 +98,7 @@ class StudentController extends Controller
         $student->lastname = $request->first_lastName;
         $student->second_lastname = $request->second_lastName;
         $student->name = $request->name;
-        $student->student_ID = $request->student_ID;
+        $student->student_id = $request->student_id;
         $student->career = $request->career;
         $student->curriculum = $request->curriculum;
         $student->save();

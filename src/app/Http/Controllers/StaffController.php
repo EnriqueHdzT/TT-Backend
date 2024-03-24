@@ -16,7 +16,7 @@ class StaffController extends Controller
             'first_lastName' => 'required|string',
             'second_lastName' => 'required|string',
             'name' => 'required|string',
-            'staff_ID' => 'required|string|unique:staff,staff_ID',
+            'staff_id' => 'required|string|unique:staff,staff_id',
             'precedence' => 'required|string',
             'academy' => 'required|string',
             'email' => 'required|string|unique:users,email',
@@ -36,7 +36,7 @@ class StaffController extends Controller
         $staff->lastname = $request->first_lastName;
         $staff->second_lastname = $request->second_lastName;
         $staff->name = $request->name;
-        $staff->staff_ID = $request->staff_ID;
+        $staff->staff_id = $request->staff_id;
         $staff->precedence = $request->precedence;
         $staff->academy = $request->academy;
 
@@ -83,7 +83,7 @@ class StaffController extends Controller
             'first_lastName' => 'required|string',
             'second_lastName' => 'required|string',
             'name' => 'required|string',
-            'staff_ID' => 'required|string|unique:staff,staff_ID,' . $id,
+            'staff_id' => 'required|string|unique:staff,staff_id,' . $id,
             'precedence' => 'required|string',
             'academy' => 'required|string',
         ]);
@@ -97,7 +97,7 @@ class StaffController extends Controller
         $staff->lastname = $request->first_lastName;
         $staff->second_lastname = $request->second_lastName;
         $staff->name = $request->name;
-        $staff->staff_ID = $request->staff_ID;
+        $staff->staff_id = $request->staff_id;
         $staff->precedence = $request->precedence;
         $staff->academy = $request->academy;
         $staff->save();

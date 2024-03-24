@@ -22,13 +22,13 @@ class ProtocolController extends Controller
             'title' => 'required|string',
             'students' => 'required|array|max:4',
             'students.*.email' => 'required|string',
-            'students.*.student_ID' => 'required|string',
+            'students.*.student_id' => 'required|string',
             'staffs' => 'required|array|max:2',
             'staffs.*.email' => 'required|string',
             'staffs.*.name' => 'string',
             'staffs.*.first_lastName' => 'string',
             'staffs.*.second_lastName' => 'string',
-            'staffs.*.staff_ID' => 'string',
+            'staffs.*.staff_id' => 'string',
             'staffs.*.precedence' => 'string',
             'staffs.*.academy' => 'string',
             'staffs.*.pdf' => 'file|mimes:pdf',
@@ -50,7 +50,7 @@ class ProtocolController extends Controller
                 $student['name'] = $existingStudent->student['name'];
                 $student['first_lastName'] = $existingStudent->student['first_lastName'];
                 $student['second_lastName'] = $existingStudent->student['second_lastName'];
-                $student['student_ID'] = $existingStudent->student['student_ID'];
+                $student['student_id'] = $existingStudent->student['student_id'];
                 $student['career'] = $existingStudent->student['career'];
                 $student['curriculum'] = $existingStudent->student['curriculum'];
 
@@ -60,7 +60,7 @@ class ProtocolController extends Controller
                     'name' => 'required|string',
                     'first_lastName' => 'required|string',
                     'second_lastName' => 'required|string',
-                    'student_ID' => 'required|string',
+                    'student_id' => 'required|string',
                     'career' => 'required|in:ISW,IIA,ICD',
                     'curriculum' => 'required|date_format:Y',
                 ]);
@@ -80,12 +80,12 @@ class ProtocolController extends Controller
                 $newStudent->name = $student['first_lastName'];
                 $newStudent->lastname = $student['second_lastName'];
                 $newStudent->second_lastname = $student['name'];
-                $newStudent->student_ID = $student['student_ID'];
+                $newStudent->student_id = $student['student_id'];
                 $newStudent->career = $student['career'];
                 $newStudent->curriculum = $student['curriculum'];
                 $newStudent->save();
             }
-            $studentIDs[] = $student['student_ID'];
+            $studentIDs[] = $student['student_id'];
             $studentEmail = $student['email'];
             $studentEmails[] = $student['email'];
         }
@@ -103,7 +103,7 @@ class ProtocolController extends Controller
         $hasESCOM = false;
         foreach ($request->staffs as $staff) {
             $staffEmail = $staff['email'];
-            $staffIDs[] = $staff['staff_ID'];
+            $staffIDs[] = $staff['staff_id'];
             $staffEmails[] = $staff['email'];
             if ($staff['precedence'] === 'ESCOM') {
                 $hasESCOM = true;
@@ -162,8 +162,8 @@ class ProtocolController extends Controller
     {
         $request->validate([
             'title_protocol' => 'required|string',
-            'student_ID' => 'required|string|unique:students,student_ID',
-            'staff_ID' => 'required|string|unique:staff,staff_ID',
+            'student_id' => 'required|string|unique:students,student_id',
+            'staff_id' => 'required|string|unique:staff,staff_id',
             'keywords' => 'required|string',
             'protocol_doc' => 'required|binary',
         ]);
