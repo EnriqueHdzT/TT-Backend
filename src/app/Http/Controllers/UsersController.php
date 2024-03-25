@@ -22,7 +22,7 @@ class UsersController extends Controller
         'staff' => ['lastname', 'second_lastname', 'name']
     ];
     
-    protected $wantedStudents = 9;
+    protected $wantedUsers = 9;
 
     public function searchUsers(Request $request) {
         $request->validate([
@@ -199,79 +199,99 @@ class UsersController extends Controller
 
         $totalPages = 0;
         $usersResponse = [];
+        $usersFound = [];
 
         // Get users based on filters
         if($filters['usrType'] === 'All') {
-            $usersResponse = User::orderBy('created_at', 'desc')
+            $usersFound = User::orderBy('created_at', 'desc')
             ->latest()
-            ->skip(($page-1)*$this->wantedStudents)
-            ->take($page*$this->wantedStudents)
+            ->skip(($page-1)*$this->wantedUsers)
+            ->take($page*$this->wantedUsers)
             ->with('student')
             ->with('staff')
             ->get();
             $totalPages = ceil(User::count()/9);
         } elseif($filters['usrType'] === "Staff") {
             if(!array_key_exists("precedence", $filters)){
-                $usersResponse = Staff::orderBy('created_at', 'desc')
+                $usersFound = User::orderBy('created_at', 'desc')
                 ->latest()
-                ->skip(($page-1)*$this->wantedStudents)
-                ->take($page*$this->wantedStudents)
+                ->skip(($page-1)*$this->wantedUsers)
+                ->take($page*$this->wantedUsers)
+                ->whereHas('staff')
+                ->with('staff')
                 ->get();
                 $totalPages = ceil(Staff::count()/9);
             } elseif($filters['precedence'] === "External"){
-                $usersResponse = Staff::where('precedence', '!=', 'ESCOM')
+                $usersFound = User::whereHas('staff', function ($query) use ($filters) {
+                    $query->where('precedence','!=', 'ESCOM');
+                })
                 ->orderBy('created_at', 'desc')
                 ->latest()
-                ->skip(($page-1)*$this->wantedStudents)
-                ->take($page*$this->wantedStudents)
+                ->skip(($page-1)*$this->wantedUsers)
+                ->take($page*$this->wantedUsers)
+                ->with('staff')
                 ->get();
                 $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->count()/9);
-            } elseif($filters['precedence'] === "Internal" && array_key_exists("academy", $filters)){
-                $usersResponse = Staff::where('precedence', 'ESCOM')
-                ->where('academy', $filters['academy'])
+            } elseif($filters['precedence'] === "Internal" && array_key_exists("academy", $filters) && array_key_exists("precedence", $filters)){
+                $usersFound = User::whereHas('staff', function ($query) use ($filters) {
+                    $query->where('precedence', 'ESCOM')
+                          ->where('academy', $filters['academy']);
+                })
                 ->orderBy('created_at', 'desc')
                 ->latest()
-                ->skip(($page-1)*$this->wantedStudents)
-                ->take($page*$this->wantedStudents)
+                ->skip(($page-1)*$this->wantedUsers)
+                ->take($page*$this->wantedUsers)
+                ->with('staff')
                 ->get();
                 $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->where('academy', $filters['academy'])->count()/9);
             }
             
         } elseif($filters['usrType'] === "Student") {
             if(!array_key_exists("career", $filters) && !array_key_exists("curriculum", $filters)){
-                $usersResponse = Student::orderBy('created_at', 'desc')
+                $usersFound = User::orderBy('created_at', 'desc')
                 ->latest()
-                ->skip(($page-1)*$this->wantedStudents)
-                ->take($page*$this->wantedStudents)
+                ->skip(($page-1)*$this->wantedUsers)
+                ->take($page*$this->wantedUsers)
+                ->whereHas('student')
+                ->with('student')
                 ->get();
                 $totalPages = ceil(Student::count()/9);
             } elseif(array_key_exists("career", $filters) && !array_key_exists("curriculum", $filters)){
-                $usersResponse = Student::where('career', $filters['career'])
+                $usersFound = User::whereHas('student', function ($query) use ($filters) {
+                    $query->where('career', $filters['career']);
+                })
                 ->orderBy('created_at', 'desc')
                 ->latest()
-                ->skip(($page-1)*$this->wantedStudents)
-                ->take($page*$this->wantedStudents)
+                ->skip(($page-1)*$this->wantedUsers)
+                ->take($page*$this->wantedUsers)
+                ->with('student')
                 ->get();
                 $totalPages = ceil(Student::where('career', $filters['career'])->count()/9);
             } else if(array_key_exists("career", $filters) && array_key_exists("curriculum", $filters)){
-                $usersResponse = Student::where('career', $filters['career'])
-                ->where('curriculum', $filters['curriculum'])
+                $usersFound = User::whereHas('student', function ($query) use ($filters) {
+                    $query->where('career', $filters['career'])
+                          ->where('curriculum', $filters['curriculum']);
+                })
                 ->orderBy('created_at', 'desc')
                 ->latest()
-                ->skip(($page-1)*$this->wantedStudents)
-                ->take($page*$this->wantedStudents)
+                ->skip(($page-1)*$this->wantedUsers)
+                ->take($page*$this->wantedUsers)
+                ->with('student')
                 ->get();
                 $totalPages = ceil(Student::where('career', $filters['career'])->where('curriculum', $filters['curriculum'])->count()/9);
             }
         }
+        $usersResponse = $usersFound;
 
         // Validate if users where found
         if(count($usersResponse) === 0){
             return response()->json(['message' => 'Usuarios no encontrados'], 404);    
         }
-
+        
         foreach($usersResponse as $user){
+            
             unset($user['name']);
+            unset($user['id']);
             unset($user['email_verified_at']);
             unset($user['created_at']);
             unset($user['updated_at']);
