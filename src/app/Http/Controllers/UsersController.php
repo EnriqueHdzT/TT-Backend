@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
@@ -184,25 +185,37 @@ class UsersController extends Controller
     }
 
     public function getUsers(Request $request) {
-        $request->validate([
-            'filters' => 'required|array',
-            'filters.usrType' => 'required|in:Student,Staff,All',
-            'filters.precedence' => 'in:Internal,External',
-            'filters.academy' => 'string',
-            'filters.career' => 'in:ISW,IIA,LCD',
-            'filters.curriculum' => 'date_format:Y|in:1999,2009,2020',
+        $rules = [
+            'userType' => 'nullable|in:Alumnos,Docentes',
+            'precedence' => 'nullable|in:Interino,Externo',
+            'academy' => 'nullable|in:Ciencia de Datos, Ciencias Basicas, Ciencias de la Computacion',
+            'career' => 'nullable|in:ISW,IIA,LCD',
+            'curriculum' => 'nullable|date_format:Y|in:1999,2009,2020',
             'page' => 'required|int|min:1'
-        ]);
+        ];
 
-        $filters = $request->filters;
-        $page = $request->page;
+        $headers = [];
+        foreach ($rules as $header => $rule){
+            $headerValue = $request->header($header);
+            if($headerValue !== null){
+                $headers[$header] = is_array($headerValue) ? $headerValue[0] : $headerValue;
+            }
+        }
+
+        $validator = Validator::make($headers, $rules);
+        if($validator->fails()){
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $filters = collect($headers)->except('page')->all();
+        $page = $headers['page'];
 
         $totalPages = 0;
         $usersResponse = [];
         $usersFound = [];
 
         // Get users based on filters
-        if($filters['usrType'] === 'All') {
+        if(!isset($filters['userType'])) {
             $usersFound = User::orderBy('created_at', 'desc')
             ->latest()
             ->skip(($page-1)*$this->wantedUsers)
@@ -211,7 +224,7 @@ class UsersController extends Controller
             ->with('staff')
             ->get();
             $totalPages = ceil(User::count()/9);
-        } elseif($filters['usrType'] === "Staff") {
+        } elseif($filters['userType'] === "Docentes") {
             if(!array_key_exists("precedence", $filters)){
                 $usersFound = User::orderBy('created_at', 'desc')
                 ->latest()
@@ -221,7 +234,7 @@ class UsersController extends Controller
                 ->with('staff')
                 ->get();
                 $totalPages = ceil(Staff::count()/9);
-            } elseif($filters['precedence'] === "External"){
+            } elseif($filters['precedence'] === "Externo"){
                 $usersFound = User::whereHas('staff', function ($query) use ($filters) {
                     $query->where('precedence','!=', 'ESCOM');
                 })
@@ -232,7 +245,7 @@ class UsersController extends Controller
                 ->with('staff')
                 ->get();
                 $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->count()/9);
-            } elseif($filters['precedence'] === "Internal" && array_key_exists("academy", $filters) && array_key_exists("precedence", $filters)){
+            } elseif($filters['precedence'] === "Interino" && array_key_exists("academy", $filters) && array_key_exists("precedence", $filters)){
                 $usersFound = User::whereHas('staff', function ($query) use ($filters) {
                     $query->where('precedence', 'ESCOM')
                           ->where('academy', $filters['academy']);
@@ -246,7 +259,7 @@ class UsersController extends Controller
                 $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->where('academy', $filters['academy'])->count()/9);
             }
             
-        } elseif($filters['usrType'] === "Student") {
+        } elseif($filters['userType'] === "Alumnos") {
             if(!array_key_exists("career", $filters) && !array_key_exists("curriculum", $filters)){
                 $usersFound = User::orderBy('created_at', 'desc')
                 ->latest()
@@ -291,13 +304,16 @@ class UsersController extends Controller
         foreach($usersResponse as $user){
             
             unset($user['name']);
-            unset($user['id']);
             unset($user['email_verified_at']);
             unset($user['created_at']);
             unset($user['updated_at']);
             if(!$user['staff']){
                 unset($user['staff']);
+                unset($user['student']['id']);
                 unset($user['student']['user_id']);
+                unset($user['student']['gender']);
+                unset($user['student']['student_id']);
+                unset($user['student']['birth_date']);
                 unset($user['student']['profile_image']);
                 unset($user['student']['altern_email']);
                 unset($user['student']['phone_number']);
@@ -305,7 +321,11 @@ class UsersController extends Controller
                 unset($user['student']['updated_at']);
             } else {
                 unset($user['student']);
+                unset($user['staff']['id']);
                 unset($user['staff']['user_id']);
+                unset($user['staff']['gender']);
+                unset($user['staff']['staff_id']);
+                unset($user['staff']['birth_date']);
                 unset($user['staff']['profile_image']);
                 unset($user['staff']['altern_email']);
                 unset($user['staff']['phone_number']);
