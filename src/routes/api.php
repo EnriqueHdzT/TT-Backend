@@ -46,6 +46,7 @@ Route::delete('/addProtocol/{id}', [ProtocolController::class, 'deleteProtocol']
 
 // Users routers
 Route::get('/users', [UsersController::class, 'getUsers']);
+Route::delete('/users/{id}', [UsersController::class, 'deleteUser']);
 Route::get('/searchUsers', [UsersController::class, 'searchUsers']);
 
 // Protected routes

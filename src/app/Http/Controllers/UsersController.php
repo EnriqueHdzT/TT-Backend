@@ -336,4 +336,14 @@ class UsersController extends Controller
         $usersResponse['numPages'] = $totalPages;
         return $usersResponse;
     }
+    public function deleteUser($id) {
+        $user = User::find($id);
+
+        if (!$user) {    
+            return response()->json(['message' => 'Usuario no encontrado'], 404);
+        }
+
+        $user->delete();
+        return response()->json(['message' => 'Estudiante eliminado exitosamente'], 200);
+    }
 }
