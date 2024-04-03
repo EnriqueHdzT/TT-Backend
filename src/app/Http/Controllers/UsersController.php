@@ -188,7 +188,7 @@ class UsersController extends Controller
         $rules = [
             'userType' => 'nullable|in:Alumnos,Docentes',
             'precedence' => 'nullable|in:Interino,Externo',
-            'academy' => 'nullable|in:Ciencia de Datos, Ciencias Basicas, Ciencias de la Computacion',
+            'academy' => 'nullable|string',
             'career' => 'nullable|in:ISW,IIA,LCD',
             'curriculum' => 'nullable|date_format:Y|in:1999,2009,2020',
             'page' => 'required|int|min:1'
@@ -234,18 +234,31 @@ class UsersController extends Controller
                 ->with('staff')
                 ->get();
                 $totalPages = ceil(Staff::count()/9);
-            } elseif($filters['precedence'] === "Externo"){
-                $usersFound = User::whereHas('staff', function ($query) use ($filters) {
-                    $query->where('precedence','!=', 'ESCOM');
-                })
-                ->orderBy('created_at', 'desc')
-                ->latest()
-                ->skip(($page-1)*$this->wantedUsers)
-                ->take($page*$this->wantedUsers)
-                ->with('staff')
-                ->get();
-                $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->count()/9);
-            } elseif($filters['precedence'] === "Interino" && array_key_exists("academy", $filters) && array_key_exists("precedence", $filters)){
+            } elseif(!array_key_exists("academy", $filters)){
+                if($filters['precedence'] === "Interino"){
+                    $usersFound = User::whereHas('staff', function ($query) use ($filters) {
+                        $query->where('precedence', 'ESCOM');
+                    })
+                    ->orderBy('created_at', 'desc')
+                    ->latest()
+                    ->skip(($page-1)*$this->wantedUsers)
+                    ->take($page*$this->wantedUsers)
+                    ->with('staff')
+                    ->get();
+                    $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->count()/9);
+                } elseif ($filters['precedence'] === "Externo") {
+                    $usersFound = User::whereHas('staff', function ($query) use ($filters) {
+                        $query->where('precedence', '!=' , 'ESCOM');
+                    })
+                    ->orderBy('created_at', 'desc')
+                    ->latest()
+                    ->skip(($page-1)*$this->wantedUsers)
+                    ->take($page*$this->wantedUsers)
+                    ->with('staff')
+                    ->get();
+                    $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->count()/9);
+                }
+            } else {
                 $usersFound = User::whereHas('staff', function ($query) use ($filters) {
                     $query->where('precedence', 'ESCOM')
                           ->where('academy', $filters['academy']);
@@ -260,7 +273,7 @@ class UsersController extends Controller
             }
             
         } elseif($filters['userType'] === "Alumnos") {
-            if(!array_key_exists("career", $filters) && !array_key_exists("curriculum", $filters)){
+            if(!array_key_exists("career", $filters)){
                 $usersFound = User::orderBy('created_at', 'desc')
                 ->latest()
                 ->skip(($page-1)*$this->wantedUsers)
@@ -269,7 +282,7 @@ class UsersController extends Controller
                 ->with('student')
                 ->get();
                 $totalPages = ceil(Student::count()/9);
-            } elseif(array_key_exists("career", $filters) && !array_key_exists("curriculum", $filters)){
+            } elseif(!array_key_exists("curriculum", $filters)){
                 $usersFound = User::whereHas('student', function ($query) use ($filters) {
                     $query->where('career', $filters['career']);
                 })
@@ -280,7 +293,7 @@ class UsersController extends Controller
                 ->with('student')
                 ->get();
                 $totalPages = ceil(Student::where('career', $filters['career'])->count()/9);
-            } else if(array_key_exists("career", $filters) && array_key_exists("curriculum", $filters)){
+            } else {
                 $usersFound = User::whereHas('student', function ($query) use ($filters) {
                     $query->where('career', $filters['career'])
                           ->where('curriculum', $filters['curriculum']);
