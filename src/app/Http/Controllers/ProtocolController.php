@@ -27,10 +27,11 @@ class ProtocolController extends Controller
             'keywords' => 'required|array|min:1|max:4',
             'keywords.*.keyword' => 'required|string',
             'pdf' => 'file|mimes:pdf',
-        ]);
+        ]);        
 
         // Validate and process students
         $studentIDs = [];
+        $studentTableIDs = [];
         $studentEmails = [];
         foreach ($request->students as $student) {
             $existingStudent = User::where('email', $student['email'])->first();
@@ -43,6 +44,7 @@ class ProtocolController extends Controller
                 $student['career'] = $existingStudent->student['career'];
                 $student['curriculum'] = $existingStudent->student['curriculum'];
 
+                $studentTableIDs[] = $existingStudent->student['id'];
             } else {
                 $studentsValidator = Validator::make($student, [
                     'email' => 'required|string',
@@ -51,7 +53,7 @@ class ProtocolController extends Controller
                     'second_lastname' => 'required|string',
                     'student_id' => 'required|string',
                     'career' => 'required|in:ISW,IIA,ICD',
-                    'curriculum' => 'required|date_format:Y',
+                    'curriculum' => 'required|in:1999,2009,2020|date_format:Y',
                 ]);
                 
                 if($studentsValidator->fails()){
@@ -72,6 +74,8 @@ class ProtocolController extends Controller
                 $newStudent->career = $student['career'];
                 $newStudent->curriculum = $student['curriculum'];
                 $newStudent->save();
+
+                $studentTableIDs[] = $newStudent['id'];
             }
             $studentIDs[] = $student['student_id'];
             $studentEmails[] = $student['email'];
@@ -85,6 +89,7 @@ class ProtocolController extends Controller
         }
 
         $directorsIDs = [];
+        $directorsTableIDs = [];
         $directorsEmails = [];
         $hasESCOM = false;
         foreach ($request->directors as $director) {
@@ -98,6 +103,7 @@ class ProtocolController extends Controller
                 $director['precedence'] = $existingdirector->staff['precedence'];
                 $director['academy'] = $existingdirector->staff['academy'];
 
+                $directorsTableIDs[] = $existingdirector->staff['id'];
             } else {
                 $directorValidator = Validator::make($director, [
                     'email' => 'required|string',
@@ -126,6 +132,8 @@ class ProtocolController extends Controller
                 $newStaff->precedence = $director['precedence'];
                 $newStaff->academy = $director['academy'];
                 $newStaff->save();
+
+                $directorsTableIDs[] = $newStaff['id'];
             }
             if($director['precedence'] === 'ESCOM'){
                 $hasESCOM = true;
@@ -143,6 +151,16 @@ class ProtocolController extends Controller
         if (!$hasESCOM) {
             return response()->json(['error' => 'At least one staff member must have precedence ESCOM'], 400);
         }
+
+        $studentTableIDs = array_unique($studentTableIDs);
+        $directorsTableIDs = array_unique($directorsTableIDs);
+
+        $newProtocol = new Protocol;
+        $newProtocol->title = $request->title;
+        $newProtocol->keywords = json_encode($request->keywords);
+        $newProtocol->save();
+        $newProtocol->students()->attach($studentTableIDs);
+        $newProtocol->directors()->attach($directorsTableIDs);
 
         return response()->json($request, 201);
     }
