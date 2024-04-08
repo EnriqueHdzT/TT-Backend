@@ -13,6 +13,9 @@ class Protocol extends Model
         'protocol_id',
         'title',
         'status',
+        'students_data',
+        'directors_data',
+        'synods_data',
         'keywords',
         'pdf',
     ];

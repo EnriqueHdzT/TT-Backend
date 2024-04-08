@@ -26,8 +26,7 @@ class StudentController extends Controller
         // Crear el nuevo usuario
         $user = new User();
         $user->email = $request->email;
-        $password = Str::random(12);
-        $user->password = bcrypt($password);
+        $user->password = bcrypt(Str::random(12));
         $user->save();
 
         // Crear el estudiante asociado

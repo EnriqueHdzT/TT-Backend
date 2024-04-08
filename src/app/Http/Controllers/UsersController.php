@@ -184,6 +184,20 @@ class UsersController extends Controller
         $b = $temp;
     }
 
+    public function checkIfUserExist(Request $request) {
+        $request->validate([
+            'email' => 'required|string',
+            'userType' => 'required|in:Student,Staff'
+        ], [
+            '*' => 'Error in data'
+        ]);
+        $user = User::where('email', $email)->first();
+        if($user && $user->$request->userType){
+            return response()->json(['message' => 'El usuario existe en el sistema'], 200);
+        }
+        return response()->json(['message' => 'Usuario no encontrado'], 404);
+    }
+
     public function getUsers(Request $request) {
         $rules = [
             'userType' => 'nullable|in:Alumnos,Docentes',
