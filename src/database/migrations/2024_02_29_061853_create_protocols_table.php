@@ -13,9 +13,6 @@ class CreateProtocolsTable extends Migration
             $table->string('title');
             $table->string('protocol_id')->unique();
             $table->enum('status', ['waiting', 'validated', 'classified', 'evaluated', 'active', 'canceled'])->default('waiting');
-            $table->json('students_data')->nullable();
-            $table->json('directors_data')->nullable();
-            $table->json('synods_data')->nullable();
             $table->json('keywords')->nullable();
             $table->binary('pdf')->nullable();
             $table->timestamps();
@@ -27,4 +24,3 @@ class CreateProtocolsTable extends Migration
         Schema::dropIfExists('protocols');
     }
 }
-
