@@ -4,33 +4,63 @@ namespace App\Http\Controllers;
 
 
 use App\Models\User;
+use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
     public function register(Request $request) {
-        $fields = $request->validate([
+        $rules = [
             'first_lastName' => 'required|string',
             'second_lastName' => 'required|string',
             'name' => 'required|string',
-            'email' => 'required|string|unique:users,email',
+            'email' => 'required|string|confirmed',
             'usr_id' => 'required|string',
-            'password' => 'required|string|confirmed',
-        ]);
+            'career' => 'required|in:ISW,IIA,LCD',
+            'curriculum' => 'required|in:1999,2009,2020|date_format:Y',
+            'password' => 'required|string|min:8|confirmed',
+        ];
 
-        $user = User::create([
-            'email' => $fields['email'],
-            'password' => bcrypt($fields['password']),
-        ]);
+        $validator = Validator::make($request->all(), $rules);
 
-        $token = $user->createToken('some')->plainTextToken;
+        if($validator->fails()){
+            return response()->json(['message' => 'Estructura no esperados'], 422);
+        }
+
+        if(User::where('email', $request->email)->first()){
+            return response()->json(['message' => 'Correo ya registrado en el sistema'], 409);
+        }
+        if(Student::where('student_id', $request->usr_id)->first()){
+            return response()->json(['message' => 'Boleta ya registrada en el sistema'], 409);
+        }
+
+        $newUser = User::create([
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+        $newUser->is_register = true;
+        $newUser->save();
+
+        $newStudent = new Student;
+        $newStudent->user_id = $newUser->id;
+        $newStudent->name = $request->name;
+        $newStudent->lastname = $request->first_lastName;
+        $newStudent->second_lastname = $request->second_lastName;
+        $newStudent->student_id = $request->usr_id;
+        $newStudent->career = $request->career;
+        $newStudent->curriculum = $request->curriculum;
+        $newStudent->save();
+
+        $token = $newUser->createToken('some')->plainTextToken;
 
         $response = [
-            'user' => $user,
+            'user' => $newUser,
             'token' => $token
         ];
 
@@ -49,15 +79,17 @@ class AuthController extends Controller
     public function logout(Request $request) {
         $user = Auth::user();
         $tokenValue = $request->bearerToken();
-
         if ($user && $tokenValue) {
-            $deleted = $user->tokens()->where('token', hash('sha256', substr($tokenValue, 3)))->delete();
-
+            $tokenParts = explode('|', $tokenValue, 2);
+            $deleted = $user->tokens()
+                ->where('id', $tokenParts[0])
+                ->where('token', hash('sha256', $tokenParts[1]))
+                ->delete();
             if ($deleted) {
-                return response()->json(['message' => 'Token eliminado exitosamente']);
+                return response()->json([], 204);
             }
         }
 
-        return response()->json(['message' => 'No se encontró ningún token para eliminar'], 404);
+        return response()->json([], 404);
     }
 }
