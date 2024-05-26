@@ -53,7 +53,7 @@ class ProtocolController extends Controller
                     'second_lastname' => 'required|string',
                     'student_id' => 'required|string',
                     'career' => 'required|in:ISW,IIA,ICD',
-                    'curriculum' => 'required|in:1999,2009,2020|date_format:Y',
+                    'curriculum' => 'required|in:2009,2020|date_format:Y',
                 ]);
                 
                 if($studentsValidator->fails()){

@@ -204,7 +204,7 @@ class UsersController extends Controller
             'precedence' => 'nullable|in:Interino,Externo',
             'academy' => 'nullable|string',
             'career' => 'nullable|in:ISW,IIA,LCD',
-            'curriculum' => 'nullable|date_format:Y|in:1999,2009,2020',
+            'curriculum' => 'nullable|date_format:Y|in:2009,2020',
             'page' => 'required|int|min:1'
         ];
 
@@ -338,10 +338,7 @@ class UsersController extends Controller
                 unset($user['staff']);
                 unset($user['student']['id']);
                 unset($user['student']['user_id']);
-                unset($user['student']['gender']);
                 unset($user['student']['student_id']);
-                unset($user['student']['birth_date']);
-                unset($user['student']['profile_image']);
                 unset($user['student']['altern_email']);
                 unset($user['student']['phone_number']);
                 unset($user['student']['created_at']);
@@ -350,10 +347,7 @@ class UsersController extends Controller
                 unset($user['student']);
                 unset($user['staff']['id']);
                 unset($user['staff']['user_id']);
-                unset($user['staff']['gender']);
                 unset($user['staff']['staff_id']);
-                unset($user['staff']['birth_date']);
-                unset($user['staff']['profile_image']);
                 unset($user['staff']['altern_email']);
                 unset($user['staff']['phone_number']);
                 unset($user['staff']['created_at']);
