@@ -58,11 +58,12 @@ class AuthController extends Controller
         $newStudent->curriculum = $request->curriculum;
         $newStudent->save();
 
-        // Se genera token y URL que se enviara al usuario para validar su correo
+        // Se genera token y parametro del URL que se enviara al usuario para validar su correo
         $token = Str::random(60);
         $newRegisterToken = new RegisterToken;
         $newRegisterToken->email = $request->email;
         $newRegisterToken->token = $token;
+        $newRegisterToken->save();
 
         $userToken = Crypt::encryptString($request->email + $token);
 
