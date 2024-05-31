@@ -10,8 +10,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
@@ -42,7 +40,7 @@ class AuthController extends Controller
         }
 
         $newUser = User::create([
-            'email' => $request->email,
+            'email' => Crypt::encryptString($request->email),
             'password' => $request->password,
         ]);
 
@@ -61,7 +59,7 @@ class AuthController extends Controller
         // Se genera token y parametro del URL que se enviara al usuario para validar su correo
         $token = Str::random(60);
         $newRegisterToken = new RegisterToken;
-        $newRegisterToken->email = $request->email;
+        $newRegisterToken->email = Crypt::encryptString($request->email);
         $newRegisterToken->token = $token;
         $newRegisterToken->save();
 
@@ -73,13 +71,26 @@ class AuthController extends Controller
     }
 
     public function login(Request $request) {
-        $credentials = $request->only('email', 'password');
+        $rules = [
+            'email' => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@ipn\.mx$/',
+            'password' => 'required|string|size:64',
+        ];
+
+        $validator = Validator::make($request->all(), $rules);
+        if($validator->fails()){
+            return response()->json(['message' => 'Los datos no cumplen con la estructura esperada'], 422);
+        }
+
+        $credentials = [
+            'email' => Crypt::encryptString($request->email),
+            'password' => $request->password,
+        ];
         if (Auth::attempt($credentials)) {
             $token = Auth::user()->createToken('AuthToken')->plainTextToken;
             return response()->json(['token' => $token], 200);
         }
     
-        return response()->json(['message' => 'Invalid credentials'], 401);
+        return response()->json([], 401);
     }
 
     public function logout(Request $request) {
