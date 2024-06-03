@@ -27,16 +27,6 @@ class Staff extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function protocolsDirectors()
-    {
-        return $this->belongsToMany(Protocol::class, 'protocol_directors')->withTimestamps();
-    }
-
-    public function protocolsSinodales()
-    {
-        return $this->belongsToMany(Protocol::class, 'protocol_sinodales')->withTimestamps();
-    }
-
     protected static function boot()
     {
         parent::boot();

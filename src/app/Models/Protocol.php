@@ -16,19 +16,4 @@ class Protocol extends Model
         'keywords',
         'pdf',
     ];
-
-    public function students()
-    {
-        return $this->belongsToMany(Student::class, 'protocol_students')->withTimestamps()->limit(4);
-    }
-
-    public function directors()
-    {
-        return $this->belongsToMany(Staff::class, 'protocol_directors')->withTimestamps()->limit(2);
-    }
-
-    public function sinodales()
-    {
-        return $this->belongsToMany(Staff::class, 'protocol_sinodales')->withTimestamps()->limit(3);
-    }
 }
