@@ -12,13 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('students', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->uuid('id')->primary();
+            $table->uuid('user_id')->index();
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->string('lastname');
             $table->string('second_lastname')->nullable();
-            $table->string('name')->nullable();
+            $table->string('name');
             $table->string('student_id', 10);
-            $table->enum('career', ['ISW', 'ICD', 'IIA'])->default('ISW');
+            $table->enum('career', ['ISW', 'LCD', 'IIA'])->default('ISW');
             $table->integer('curriculum')->default(2020);
             $table->string('altern_email')->nullable();
             $table->string('phone_number', 15)->nullable();
