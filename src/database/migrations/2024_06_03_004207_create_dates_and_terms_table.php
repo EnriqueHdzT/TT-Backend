@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('dates_and_terms', function (Blueprint $table) {
             $table->string('cycle', 6)->primary();
-            $table->dateTime('start_recv_date_ord');
-            $table->dateTime('end_recv_date_ord');
+            $table->dateTime('start_recv_date_ord')->nullable();
+            $table->dateTime('end_recv_date_ord')->nullable();
             $table->dateTime('recom_classif_end_date_ord')->nullable();
             $table->dateTime('recom_eval_end_date_ord')->nullable();
             $table->dateTime('correc_end_date_ord')->nullable();
