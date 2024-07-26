@@ -52,6 +52,8 @@ Route::get('/searchUsers', [UsersController::class, 'searchUsers']);
 
 // Date and terms routes
 Route::post('/dates', [DatesAndTermsController::class, 'createSchoolCycle']);
+Route::get('/dates', [DatesAndTermsController::class, 'getLatestSchoolCycle']);
+Route::get('/dates/{cycle}', [DatesAndTermsController::class, 'readSchoolCycle']);
 
 // Protected routes
 Route::group(['middleware' => ['auth:sanctum']], function () {
