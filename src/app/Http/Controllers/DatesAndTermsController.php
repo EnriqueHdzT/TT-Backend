@@ -9,44 +9,50 @@ use App\Models\DatesAndTerms;
 
 class DatesAndTermsController extends Controller
 {
+    private $cycleRule = [
+        'cycle' => ['required', 'string', 'regex:/^\d{4}\/[1-2]$/'],
+    ];
+
+    private function isCycleRegexValid($data) {
+        $validator = Validator::make($data, $this->cycleRule);
+        return !$validator->fails();
+    }
+
     public function createSchoolCycle(Request $request)
     {
-        $rules = [
-            'cycle' => 'required|string|regex:/^\d{4}\/[1-2]$',
-        ];
-        $validator = Validator::make($request->all(), $rules);
-        if ($validator->fails()) {
+        if(!$this->isCycleRegexValid($request->only('cycle')) || $request->keys() !== ['cycle']) {
             return response()->json(['error' => 'Error en la peticion'], 400);
         }
-        $newSchoolCycle = request('cycle');
+        if(DatesAndTerms::where('cycle', $request->cycle)->exists()){
+            return response()->json([], 200);
+        }
 
         $newCycle = new DatesAndTerms();
-        $newCycle->cycle = $newSchoolCycle;
+        $newCycle->cycle = request('cycle');
         $newCycle->save();
         return response()->json([], 200);
     }
 
-    public function readSchoolCycle($cycle)
+    public function getSchoolCycle(Request $request)
     {
-        $schoolCycle = DatesAndTerms::find($cycle);
-
+        if($request->keys() !== [] && $request->keys() !== ['cycle']){
+            return response()->json([$request->keys()], 400);
+        }
+        if($request->keys() === []){
+            $schoolCycle = DatesAndTerms::orderByRaw("CAST(split_part(cycle, '/', 1) AS INTEGER) DESC")
+                                        ->orderByRaw("CAST(split_part(cycle, '/', 2) AS INTEGER) DESC")
+                                        ->first();
+        } else {
+            if(!$this->isCycleRegexValid($request->only('cycle'))){
+                return response()->json(['error' => 'hoa Error en la peticion'], 400);
+            }
+            $schoolCycle = DatesAndTerms::where('cycle', $request->cycle)->first();
+        }
+        
         if (!$schoolCycle) {
-            return response()->json(['error' => 'Ciclo no encontrado'], 404);
+            return response()->json([], 404);
         }
 
         return response()->json($schoolCycle, 200);
-    }
-
-    public function getLatestSchoolCycle()
-    {
-        $latestSchoolCycle = DatesAndTerms::orderByRaw("SUBSTRING_INDEX(cycle, '/', 1) + 0 DESC")
-                                          ->orderByRaw("SUBSTRING_INDEX(cycle, '/', -1) + 0 DESC")
-                                          ->first();
-
-        if (!$latestSchoolCycle) {
-            return response()->json(['error' => 'Ciclo no encontrado'], 404);
-        }
-
-        return response()->json($latestSchoolCycle, 200);
     }
 }
