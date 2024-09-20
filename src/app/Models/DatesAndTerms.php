@@ -3,19 +3,24 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class DatesAndTerms extends Model
 {
     use HasFactory;
+    use HasUuids;
 
     /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
      */
+    protected $keyType = 'string';
+
     protected $fillable = [
         'cycle',
+        'status',
         'start_recv_date_ord',
         'end_recv_date_ord',
         'recom_classif_end_date_ord',

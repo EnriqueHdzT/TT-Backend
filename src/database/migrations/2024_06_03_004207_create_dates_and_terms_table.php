@@ -12,21 +12,21 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('dates_and_terms', function (Blueprint $table) {
-            $table->string('cycle', 6)->primary();
+            $table->uuid('id')->primary()->default(DB::raw('(uuid_generate_v4())'));
+            $table->string('cycle', 6);
+            $table->boolean('status')->default(true);
             $table->dateTime('start_recv_date_ord')->nullable();
             $table->dateTime('end_recv_date_ord')->nullable();
             $table->dateTime('recom_classif_end_date_ord')->nullable();
             $table->dateTime('recom_eval_end_date_ord')->nullable();
             $table->dateTime('correc_end_date_ord')->nullable();
             $table->dateTime('recom_second_eval_end_date_ord')->nullable();
-
             $table->dateTime('start_recv_date_ext')->nullable();
             $table->dateTime('end_recv_date_ext')->nullable();
             $table->dateTime('recom_classif_end_date_ext')->nullable();
             $table->dateTime('recom_eval_end_date_ext')->nullable();
             $table->dateTime('correc_end_date_ext')->nullable();
             $table->dateTime('recom_second_eval_end_date_ext')->nullable();
-
 
             $table->timestamps();
         });
