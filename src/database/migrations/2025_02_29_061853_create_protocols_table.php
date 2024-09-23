@@ -9,7 +9,6 @@ class CreateProtocolsTable extends Migration
     {
         Schema::create('protocols', function (Blueprint $table) {
             $table->uuid('id')->primary()->default(DB::raw('(uuid_generate_v4())'));
-            $table->string('protocol_id', 9);
             $table->string('title');
             $table->text('resume');
             
