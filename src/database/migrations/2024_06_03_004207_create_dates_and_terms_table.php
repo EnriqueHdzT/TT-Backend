@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('dates_and_terms', function (Blueprint $table) {
             $table->uuid('id')->primary()->default(DB::raw('(uuid_generate_v4())'));
-            $table->string('cycle', 6);
+            $table->string('cycle', 6)->unique();
             $table->boolean('status')->default(true);
             $table->dateTime('start_recv_date_ord')->nullable();
             $table->dateTime('end_recv_date_ord')->nullable();

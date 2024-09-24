@@ -44,7 +44,7 @@ class DatesAndTermsController extends Controller
                                         ->first();
         } else {
             if(!$this->isCycleRegexValid($request->only('cycle'))){
-                return response()->json(['error' => 'hoa Error en la peticion'], 400);
+                return response()->json(['error' => 'Error en la peticion'], 400);
             }
             $schoolCycle = DatesAndTerms::where('cycle', $request->cycle)->first();
         }
@@ -54,5 +54,15 @@ class DatesAndTermsController extends Controller
         }
 
         return response()->json($schoolCycle, 200);
+    }
+
+    public function getAllSchoolCycles(){
+        $schoolCycles = DatesAndTerms::orderByRaw("CAST(split_part(cycle, '/', 1) AS INTEGER) DESC")
+                                    ->orderByRaw("CAST(split_part(cycle, '/', 2) AS INTEGER) DESC")
+                                    ->get('cycle');
+        if (!$schoolCycles) {
+            return response()->json([], 404);
+        }
+        return response()->json($schoolCycles, 200);
     }
 }
