@@ -18,20 +18,26 @@ class DatesAndTerms extends Model
      */
     protected $keyType = 'string';
 
+    protected $hidden = ['created_at', 'updated_at', 'id'];
+
     protected $fillable = [
         'cycle',
         'status',
-        'start_recv_date_ord',
-        'end_recv_date_ord',
-        'recom_classif_end_date_ord',
-        'recom_eval_end_date_ord',
-        'correc_end_date_ord',
-        'recom_second_eval_end_date_ord',
-        'start_recv_date_ext',
-        'end_recv_date_ext',
-        'recom_classif_end_date_ext',
-        'recom_eval_end_date_ext',
-        'correc_end_date_ext',
-        'recom_second_eval_end_date_ext',
+        'ord_start_update_protocols',
+        'ord_end__update_protocols',
+        'ord_start_sort_protocols',
+        'ord_end_sort_protocols',
+        'ord_start_eval_protocols',
+        'ord_end_eval_protocols',
+        'ord_start_change_protocols',
+        'ord_end_change_protocols',
+        'ext_start_update_protocols',
+        'ext_end__update_protocols',
+        'ext_start_sort_protocols',
+        'ext_end_sort_protocols',
+        'ext_start_eval_protocols',
+        'ext_end_eval_protocols',
+        'ext_start_change_protocols',
+        'ext_end_change_protocols',
     ];
 }
