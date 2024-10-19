@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Models\Student;
 use App\Models\Staff;
@@ -191,9 +190,9 @@ class UsersController extends Controller
         ], [
             '*' => 'Error in data'
         ]);
-        $user = User::where('email', $email)->first();
+        $user = User::where('email', $request->email)->first();
         if($user && $user->$request->userType){
-            return response()->json(['message' => 'El usuario existe en el sistema'], 200);
+            return response()->json([], 200);
         }
         return response()->json(['message' => 'Usuario no encontrado'], 404);
     }
