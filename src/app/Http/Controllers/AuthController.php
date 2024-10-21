@@ -22,7 +22,7 @@ class AuthController extends Controller
                 'second_lastName' => 'string',
                 'name' => 'required|string',
                 'email' => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@alumno\.ipn\.mx$/|confirmed',
-                'usr_id' => 'required|string',
+                'usr_id' => 'required|string|size:10',
                 'career' => 'required|in:ISW,IIA,LCD',
                 'curriculum' => 'required|in:2009,2020|date_format:Y',
                 'password' => 'required|string|size:64|confirmed',
@@ -49,7 +49,7 @@ class AuthController extends Controller
             $newUser->save();
 
             $newStudent = new Student;
-            $newStudent->user_id = $newUser->id;
+            $newStudent->id = $newUser->id;
             $newStudent->name = $request->name;
             $newStudent->lastname = $request->first_lastName;
             $newStudent->second_lastname = $request->second_lastName ? $request->second_lastName : null;
@@ -94,7 +94,7 @@ class AuthController extends Controller
                     return response()->json(['message' => 'El correo no ha sido verificado. Por favor revise su correo.'], 401);
                 } */
 
-                if (Staff::where('user_id', $user->id)->exists()) {
+                if (Staff::where('id', $user->id)->exists()) {
                     $token = $user->createToken('SessionToken', ['staff']);
                 } else {
                     $token = $user->createToken('SessionToken', ['student']);
@@ -120,11 +120,11 @@ class AuthController extends Controller
                     ->where('token', hash('sha256', $tokenParts[1]))
                     ->delete();
                 if ($deleted) {
-                    return response()->json([], 204);
+                    return response()->json(['message' => 'Cierre de sesión exitoso'], 204);
                 }
             }
 
-            return response()->json([], 400);
+            return response()->json(['message' => 'Cierre de sesión fallido'], 400);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Hubo un error en el servidor'], 500);
         }

@@ -14,7 +14,7 @@ class Student extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'user_id',
+        'id',
         'lastname',
         'second_lastname',
         'name',
