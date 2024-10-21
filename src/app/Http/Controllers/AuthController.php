@@ -4,60 +4,158 @@ namespace App\Http\Controllers;
 
 
 use App\Models\User;
+use App\Models\Student;
+use App\Models\Staff;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
-    public function register(Request $request) {
-        $fields = $request->validate([
-            'first_lastName' => 'required|string',
-            'second_lastName' => 'required|string',
-            'name' => 'required|string',
-            'email' => 'required|string|unique:users,email',
-            'usr_id' => 'required|string',
-            'password' => 'required|string|confirmed',
-        ]);
+    public function register(Request $request)
+    {
+        try {
+            // Valores y sus caracteristicas a cumplir en el request
+            $rules = [
+                'first_lastName' => 'required|string',
+                'second_lastName' => 'string',
+                'name' => 'required|string',
+                'email' => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@alumno\.ipn\.mx$/|confirmed',
+                'usr_id' => 'required|string|size:10',
+                'career' => 'required|in:ISW,IIA,LCD',
+                'curriculum' => 'required|in:2009,2020|date_format:Y',
+                'password' => 'required|string|size:64|confirmed',
+            ];
 
-        $user = User::create([
-            'email' => $fields['email'],
-            'password' => bcrypt($fields['password']),
-        ]);
-
-        $token = $user->createToken('some')->plainTextToken;
-
-        $response = [
-            'user' => $user,
-            'token' => $token
-        ];
-
-        return response($response, 201);
-    }
-    public function login(Request $request) {
-        $credentials = $request->only('email', 'password');
-        if (Auth::attempt($credentials)) {
-            $token = Auth::user()->createToken('AuthToken')->plainTextToken;
-            return response()->json(['token' => $token], 200);
-        }
-    
-        return response()->json(['message' => 'Invalid credentials'], 401);
-    }
-
-    public function logout(Request $request) {
-        $user = Auth::user();
-        $tokenValue = $request->bearerToken();
-
-        if ($user && $tokenValue) {
-            $deleted = $user->tokens()->where('token', hash('sha256', substr($tokenValue, 3)))->delete();
-
-            if ($deleted) {
-                return response()->json(['message' => 'Token eliminado exitosamente']);
+            $validator = Validator::make($request->all(), $rules);
+            if ($validator->fails()) {
+                return response()->json(['message' => 'Los datos no cumplen con la estructura no esperada'], 422);
             }
-        }
 
-        return response()->json(['message' => 'No se encontró ningún token para eliminar'], 404);
+            if (User::where('email', $request->email)->first()) {
+                return response(['message' => 'Correo ya registrado'], 409);
+            }
+
+            $newUser = User::create([
+                'email' => $request->email,
+                'password' => $request->password,
+            ]);
+
+            $token = $newUser->createToken('RegisterToken', []);
+            $token->accessToken->expires_at = now()->addDay();
+            $token->accessToken->save();
+
+            $newUser->save();
+
+            $newStudent = new Student;
+            $newStudent->id = $newUser->id;
+            $newStudent->name = $request->name;
+            $newStudent->lastname = $request->first_lastName;
+            $newStudent->second_lastname = $request->second_lastName ? $request->second_lastName : null;
+            $newStudent->student_id = $request->usr_id;
+            $newStudent->career = $request->career;
+            $newStudent->curriculum = $request->curriculum;
+            $newStudent->save();
+
+            // TODO - @EMAIL Agregar funcion que envie email para verificar correo
+
+            return response([], 200);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Hubo un error en el servidor'], 500);
+        }
+    }
+
+    public function login(Request $request)
+    {
+        try {
+            $rules = [
+                'email' => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@(alumno\.)?ipn\.mx$/',
+                'password' => 'required|string|size:64',
+            ];
+
+            $validator = Validator::make($request->all(), $rules);
+            if ($validator->fails()) {
+                return response()->json(['message' => 'Los datos no cumplen con la estructura esperada'], 422);
+            }
+
+            $credentials = [
+                'email' => $request->email,
+                'password' => $request->password,
+            ];
+
+            if (Auth::attempt($credentials)) {
+                $user = Auth::user();
+
+                // TODO - Terminar de implementar cuando funcionalidad de correo este lista
+                /* if ($user->email_is_verified == false) {
+                    // TODO - @EMAIL Agregar funcion de envio de corre
+                    
+                    return response()->json(['message' => 'El correo no ha sido verificado. Por favor revise su correo.'], 401);
+                } */
+                $token = $user->createToken('SessionToken', []);
+                $accessToken = $token->accessToken;
+                $accessToken->update([
+                    'expires_at' => now()->addMinutes(15),
+                ]);
+
+                if (Staff::where('id', $user->id)->exists()) {
+
+                    return response()->json(['token' => $token->plainTextToken, 'userType' => Staff::find($user->id)->first()->staff_type], 200);
+                }
+
+                return response()->json(['token' => $token->plainTextToken, 'userType' => null], 200);
+            }
+
+            return response()->json(['message' => 'Credenciales incorrectas'], 401);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Hubo un error en el servidor', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function logout(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            $tokenValue = $request->bearerToken();
+            if ($user && $tokenValue) {
+                $tokenParts = explode('|', $tokenValue, 2);
+                $deleted = $user->tokens()
+                    ->where('id', $tokenParts[0])
+                    ->where('token', hash('sha256', $tokenParts[1]))
+                    ->delete();
+                if ($deleted) {
+                    return response()->json(['message' => 'Cierre de sesión exitoso'], 204);
+                }
+            }
+
+            return response()->json(['message' => 'Cierre de sesión fallido'], 400);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Hubo un error en el servidor'], 500);
+        }
+    }
+
+    public function keepAlive(Request $request)
+    {
+        try {
+            $user = Auth::user();
+
+            $tokenValue = $request->bearerToken();
+            $tokenParts = explode('|', $tokenValue, 2);
+            $token = $user->tokens()
+                ->where('id', $tokenParts[0])
+                ->where('token', hash('sha256', $tokenParts[1]))
+                ->first();
+            if (!$token || $token->name !== 'SessionToken' || $token->expires_at <= now()) {
+                $token?->delete();
+                return response()->json(['message' => 'Sesión caducada'], 401);
+            }
+
+            $token->expires_at = now()->addMinutes(15);
+            $token->save();
+
+            return response()->json(['message' => 'Sesión actualizada'], 200);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Hubo un error en el servidor'], 500);
+        }
     }
 }

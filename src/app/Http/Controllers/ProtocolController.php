@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 
@@ -20,49 +19,40 @@ class ProtocolController extends Controller
     {
         $request->validate([
             'title' => 'required|string',
-            'students' => 'required|array|max:4',
+            'students' => 'required|array|min:1|max:4',
             'students.*.email' => 'required|string',
-            'students.*.student_id' => 'required|string',
-            'staffs' => 'required|array|max:2',
-            'staffs.*.email' => 'required|string',
-            'staffs.*.name' => 'string',
-            'staffs.*.first_lastName' => 'string',
-            'staffs.*.second_lastName' => 'string',
-            'staffs.*.staff_id' => 'string',
-            'staffs.*.precedence' => 'string',
-            'staffs.*.academy' => 'string',
-            'staffs.*.pdf' => 'file|mimes:pdf',
-            'keywords' => 'required|array|max:4',
+            'directors' => 'required|array|min:1|max:2',
+            'directors.*.email' => 'required|string',
+            'keywords' => 'required|array|min:1|max:4',
             'keywords.*.keyword' => 'required|string',
-            'keywords.*.subject' => 'string',
-            'keywords.*.department' => 'string',
-            'keywords.*.academy' => 'string',
             'pdf' => 'file|mimes:pdf',
-        ]);
+        ]);        
 
         // Validate and process students
         $studentIDs = [];
+        $studentTableIDs = [];
         $studentEmails = [];
         foreach ($request->students as $student) {
             $existingStudent = User::where('email', $student['email'])->first();
 
             if ($existingStudent) {
                 $student['name'] = $existingStudent->student['name'];
-                $student['first_lastName'] = $existingStudent->student['first_lastName'];
-                $student['second_lastName'] = $existingStudent->student['second_lastName'];
+                $student['lastname'] = $existingStudent->student['lastname'];
+                $student['second_lastname'] = $existingStudent->student['second_lastname'];
                 $student['student_id'] = $existingStudent->student['student_id'];
                 $student['career'] = $existingStudent->student['career'];
                 $student['curriculum'] = $existingStudent->student['curriculum'];
 
+                $studentTableIDs[] = $existingStudent->student['id'];
             } else {
                 $studentsValidator = Validator::make($student, [
                     'email' => 'required|string',
                     'name' => 'required|string',
-                    'first_lastName' => 'required|string',
-                    'second_lastName' => 'required|string',
+                    'lastname' => 'required|string',
+                    'second_lastname' => 'required|string',
                     'student_id' => 'required|string',
                     'career' => 'required|in:ISW,IIA,ICD',
-                    'curriculum' => 'required|date_format:Y',
+                    'curriculum' => 'required|in:2009,2020|date_format:Y',
                 ]);
                 
                 if($studentsValidator->fails()){
@@ -71,22 +61,22 @@ class ProtocolController extends Controller
                 }
                 $newUser = new User();
                 $newUser->email = $student['email'];
-                // TODO : Manage what to do with passwords
-                $newUser->password = "ghola";
+                $newUser->password = bcrypt(Str::random(12));
                 $newUser->save();
                 
                 $newStudent = new Student();
                 $newStudent->user_id = $newUser->id;
-                $newStudent->name = $student['first_lastName'];
-                $newStudent->lastname = $student['second_lastName'];
-                $newStudent->second_lastname = $student['name'];
+                $newStudent->name = $student['name'];
+                $newStudent->lastname = $student['lastname'];
+                $newStudent->second_lastname = $student['second_lastname'];
                 $newStudent->student_id = $student['student_id'];
                 $newStudent->career = $student['career'];
                 $newStudent->curriculum = $student['curriculum'];
                 $newStudent->save();
+
+                $studentTableIDs[] = $newStudent['id'];
             }
             $studentIDs[] = $student['student_id'];
-            $studentEmail = $student['email'];
             $studentEmails[] = $student['email'];
         }
         
@@ -94,39 +84,84 @@ class ProtocolController extends Controller
         $uniqueStudentIDs = array_unique($studentIDs);
         $uniqueStudentEmails = array_unique($studentEmails);
         if (count($studentIDs) !== count($uniqueStudentIDs) || count($studentEmails) !== count($uniqueStudentEmails)) {
-            return response()->json(['error' => 'Duplicate student IDs or emails'], 400);
+            return response()->json(['error' => 'Duplicated students'], 400);
         }
 
-        $staffs = [];
-        $staffIDs = [];
-        $staffEmails = [];
+        $directorsIDs = [];
+        $directorsTableIDs = [];
+        $directorsEmails = [];
         $hasESCOM = false;
-        foreach ($request->staffs as $staff) {
-            $staffEmail = $staff['email'];
-            $staffIDs[] = $staff['staff_id'];
-            $staffEmails[] = $staff['email'];
-            if ($staff['precedence'] === 'ESCOM') {
+        foreach ($request->directors as $director) {
+            $existingdirector = User::where('email', $director['email'])->first();
+
+            if ($existingdirector) {
+                $director['name'] = $existingdirector->staff['name'];
+                $director['lastname'] = $existingdirector->staff['lastname'];
+                $director['second_lastname'] = $existingdirector->staff['second_lastname'];
+                $director['student_id'] = $existingdirector->staff['staff_id'];
+                $director['precedence'] = $existingdirector->staff['precedence'];
+                $director['academy'] = $existingdirector->staff['academy'];
+
+                $directorsTableIDs[] = $existingdirector->staff['id'];
+            } else {
+                $directorValidator = Validator::make($director, [
+                    'email' => 'required|string',
+                    'name' => 'required|string',
+                    'lastname' => 'required|string',
+                    'second_lastname' => 'required|string',
+                    'staff_id' => 'required|string',
+                    'precedence' => 'required|string',
+                ]);
+                
+                if($directorValidator->fails()){
+                    $errors = $directorValidator->errors()->toArray();
+                    return response()->json([$errors], 400);
+                }
+                $newUser = new User();
+                $newUser->email = $director['email'];
+                $newUser->password = bcrypt(Str::random(12));
+                $newUser->save();
+                
+                $newStaff = new Staff();
+                $newStaff->user_id = $newUser->id;
+                $newStaff->name = $director['name'];
+                $newStaff->lastname = $director['lastname'];
+                $newStaff->second_lastname = $director['second_lastname'];
+                $newStaff->staff_id = $director['staff_id'];
+                $newStaff->precedence = $director['precedence'];
+                $newStaff->academy = $director['academy'];
+                $newStaff->save();
+
+                $directorsTableIDs[] = $newStaff['id'];
+            }
+            if($director['precedence'] === 'ESCOM'){
                 $hasESCOM = true;
             }
-            $existingStaff = User::where('email', $staffEmail)->first();
-
-            if ($existingStaff) {
-                $staffs[] = $existingStaff->toArray();
-            } else {
-                $staffs[] = $staff;
-            }
+            $directorsIDs[] = $director['staff_id'];
+            $directorsEmails[] = $director['email'];
         }
 
         // Validate staffs duplicity
-        $uniqueStaffIDs = array_unique($staffIDs);
-        $uniqueStaffEmails = array_unique($staffEmails);
-        if (count($staffIDs) !== count($uniqueStaffIDs) || count($staffEmails) !== count($uniqueStaffEmails)) {
-            return response()->json(['error' => 'Duplicate staff IDs or emails'], 400);
+        $uniqueDirectorsIDs = array_unique($directorsIDs);
+        $uniqueDirectorsEmails = array_unique($directorsEmails);
+        if (count($directorsIDs) !== count($uniqueDirectorsIDs) || count($directorsEmails) !== count($uniqueDirectorsEmails)) {
+            return response()->json(['error' => 'Duplicated staff'], 400);
         }
         if (!$hasESCOM) {
             return response()->json(['error' => 'At least one staff member must have precedence ESCOM'], 400);
         }
-        return response()->json($request->students, 201);
+
+        $studentTableIDs = array_unique($studentTableIDs);
+        $directorsTableIDs = array_unique($directorsTableIDs);
+
+        $newProtocol = new Protocol;
+        $newProtocol->title = $request->title;
+        $newProtocol->keywords = json_encode($request->keywords);
+        $newProtocol->save();
+        $newProtocol->students()->attach($studentTableIDs);
+        $newProtocol->directors()->attach($directorsTableIDs);
+
+        return response()->json($request, 201);
     }
 
     public function readProtocol($id)
