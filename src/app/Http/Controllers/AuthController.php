@@ -96,15 +96,15 @@ class AuthController extends Controller
 
                 if (Staff::where('id', $user->id)->exists()) {
                     $token = $user->createToken('SessionToken', ['staff']);
-                } else {
-                    $token = $user->createToken('SessionToken', ['student']);
+                    return response()->json(['token' => $token->plainTextToken, 'userType' => Staff::find($user->id)->first()->staff_type], 200);
                 }
-                return response()->json(['token' => $token->plainTextToken], 200);
+                $token = $user->createToken('SessionToken', ['student']);
+                return response()->json(['token' => $token->plainTextToken, 'userType' => null], 200);
             }
 
             return response()->json(['message' => 'Credenciales incorrectas'], 401);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Hubo un error en el servidor'], 500);
+            return response()->json(['message' => 'Hubo un error en el servidor', 'error' => $e->getMessage()], 500);
         }
     }
 
@@ -125,6 +125,36 @@ class AuthController extends Controller
             }
 
             return response()->json(['message' => 'Cierre de sesión fallido'], 400);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Hubo un error en el servidor'], 500);
+        }
+    }
+
+    public function keepAlive(Request $request)
+    {
+        try {
+            $user = Auth::user();
+
+            if (!$user) {
+                return response()->json(['message' => 'Autenticación fallida'], 401);
+            }
+
+            $tokenValue = $request->bearerToken();
+            $tokenParts = explode('|', $tokenValue, 2);
+            $token = $user->tokens()
+                ->where('id', $tokenParts[0])
+                ->where('token', hash('sha256', $tokenParts[1]))
+                ->first();
+
+            if (!$token || $token->name !== 'SessionToken' || $token->expires_at <= now()) {
+                $token?->delete();
+                return response()->json(['message' => 'Sesión caducada'], 401);
+            }
+
+            $token->expires_at = now()->addMinutes(15);
+            $token->save();
+
+            return response()->json(['message' => 'Sesión actualizada'], 200);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Hubo un error en el servidor'], 500);
         }

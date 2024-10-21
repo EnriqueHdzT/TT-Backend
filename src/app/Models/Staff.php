@@ -23,6 +23,7 @@ class Staff extends Model
         'academy',
         'altern_email',
         'phone_number',
+        'staff_type',
     ];
 
     // Definir la relación con el modelo User
