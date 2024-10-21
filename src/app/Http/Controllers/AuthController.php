@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Models\Student;
 use App\Models\Staff;
 use Illuminate\Http\Request;
-use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
@@ -93,12 +92,17 @@ class AuthController extends Controller
                     
                     return response()->json(['message' => 'El correo no ha sido verificado. Por favor revise su correo.'], 401);
                 } */
+                $token = $user->createToken('SessionToken', []);
+                $accessToken = $token->accessToken;
+                $accessToken->update([
+                    'expires_at' => now()->addMinutes(15),
+                ]);
 
                 if (Staff::where('id', $user->id)->exists()) {
-                    $token = $user->createToken('SessionToken', ['staff']);
+
                     return response()->json(['token' => $token->plainTextToken, 'userType' => Staff::find($user->id)->first()->staff_type], 200);
                 }
-                $token = $user->createToken('SessionToken', ['student']);
+
                 return response()->json(['token' => $token->plainTextToken, 'userType' => null], 200);
             }
 
@@ -135,17 +139,12 @@ class AuthController extends Controller
         try {
             $user = Auth::user();
 
-            if (!$user) {
-                return response()->json(['message' => 'Autenticación fallida'], 401);
-            }
-
             $tokenValue = $request->bearerToken();
             $tokenParts = explode('|', $tokenValue, 2);
             $token = $user->tokens()
                 ->where('id', $tokenParts[0])
                 ->where('token', hash('sha256', $tokenParts[1]))
                 ->first();
-
             if (!$token || $token->name !== 'SessionToken' || $token->expires_at <= now()) {
                 $token?->delete();
                 return response()->json(['message' => 'Sesión caducada'], 401);

@@ -6,7 +6,6 @@ use App\Http\Controllers\StaffController;
 use App\Http\Controllers\ProtocolController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\DatesAndTermsController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -58,4 +57,5 @@ Route::get('/dates/all', [DatesAndTermsController::class, 'getAllSchoolCycles'])
 // Protected routes
 Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/keepalive', [AuthController::class, 'keepAlive']);
 });
