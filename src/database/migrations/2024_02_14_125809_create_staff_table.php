@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('academy')->nullable();
             $table->string('altern_email')->nullable();
             $table->string('phone_number', 15)->nullable();
+            $table->enum('staff_type', ['Prof', 'PresAcad', 'JefeDepAcad', 'AnaCATT', 'SecEjec', 'SecTec', 'Presidente'])->default('Prof');
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
