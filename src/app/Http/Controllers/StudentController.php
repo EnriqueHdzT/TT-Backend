@@ -18,7 +18,7 @@ class StudentController extends Controller
             'second_lastName' => 'required|string',
             'name' => 'required|string',
             'student_id' => 'required|string|unique:students,student_id',
-            'career' => 'required|in:ISW,IIA,ICD',
+            'career' => 'required|in:ISW,IIA,LCD',
             'curriculum' => 'required|date_format:Y',
             'email' => 'required|string|unique:users,email',
         ]);
