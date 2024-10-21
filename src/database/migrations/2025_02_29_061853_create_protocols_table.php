@@ -10,11 +10,12 @@ class CreateProtocolsTable extends Migration
     {
         Schema::create('protocols', function (Blueprint $table) {
             $table->uuid('id')->primary()->default(DB::raw('(uuid_generate_v4())'));
+            $table->string('protocol_id', 10);
             $table->string('title');
             $table->text('resume');
             
             // Foreign keys
-            $table->uuid('protocol_id')->index();
+            $table->uuid('period')->index();
 
             $table->uuid('student1_id')->index()->nullable();
             $table->json('student1_data')->nullable();
@@ -49,7 +50,7 @@ class CreateProtocolsTable extends Migration
             $table->timestamps();
             
             // Foreign key constraints
-            $table->foreign('protocol_id')->references('id')->on('dates_and_terms');
+            $table->foreign('period')->references('id')->on('dates_and_terms');
 
             $table->foreign('student1_id')->references('id')->on('students')->onDelete('set null');
             $table->foreign('student2_id')->references('id')->on('students')->onDelete('set null');
