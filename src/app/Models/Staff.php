@@ -3,25 +3,27 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class Staff extends Model
 {
     use HasFactory;
+    use HasUuids;
+
+    protected $keyType = 'string';
 
     protected $fillable = [
-        'user_id',
-        'profile_image',
+        'id',
         'lastname',
         'second_lastname',
         'name',
-        'birth_date',
-        'gender',
         'staff_id',
         'precedence',
         'academy',
         'altern_email',
         'phone_number',
+        'staff_type',
     ];
 
     // Definir la relación con el modelo User
@@ -30,14 +32,14 @@ class Staff extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function protocolsDirectors()
+    public function directors()
     {
-        return $this->belongsToMany(Protocol::class, 'protocol_directors')->withTimestamps();
+        return $this->hasMany(Protocol::class, 'director1_id')->orWhere('director2_id', $this->id);
     }
 
-    public function protocolsSinodales()
+    public function sinodales()
     {
-        return $this->belongsToMany(Protocol::class, 'protocol_sinodales')->withTimestamps();
+        return $this->hasMany(Protocol::class, 'sinodal1_id')->orWhere('sinodal2_id', $this->id)->orWhere('sinodal3_id', $this->id);
     }
 
     protected static function boot()
@@ -45,6 +47,17 @@ class Staff extends Model
         parent::boot();
 
         static::deleting(function ($staff) {
+            DB::table('protocols')->where('director1_id', $staff->id)
+                ->update(['director1_data' => json_encode($staff->toArray())]);
+            DB::table('protocols')->where('director2_id', $staff->id)
+                ->update(['director2_data' => json_encode($staff->toArray())]);
+            DB::table('protocols')->where('sinodal1_id', $staff->id)
+                ->update(['sinodal1_data' => json_encode($staff->toArray())]);
+            DB::table('protocols')->where('sinodal2_id', $staff->id)
+                ->update(['sinodal2_data' => json_encode($staff->toArray())]);
+            DB::table('protocols')->where('sinodal3_id', $staff->id)
+                ->update(['sinodal3_data' => json_encode($staff->toArray())]);
+
             $staff->user()->delete();
         });
     }

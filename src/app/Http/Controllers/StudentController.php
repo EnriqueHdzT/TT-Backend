@@ -18,7 +18,7 @@ class StudentController extends Controller
             'second_lastName' => 'required|string',
             'name' => 'required|string',
             'student_id' => 'required|string|unique:students,student_id',
-            'career' => 'required|in:ISW,IIA,ICD',
+            'career' => 'required|in:ISW,IIA,LCD',
             'curriculum' => 'required|date_format:Y',
             'email' => 'required|string|unique:users,email',
         ]);
@@ -26,8 +26,7 @@ class StudentController extends Controller
         // Crear el nuevo usuario
         $user = new User();
         $user->email = $request->email;
-        $password = Str::random(12);
-        $user->password = bcrypt($password);
+        $user->password = bcrypt(Str::random(12));
         $user->save();
 
         // Crear el estudiante asociado

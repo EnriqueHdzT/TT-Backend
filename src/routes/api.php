@@ -5,7 +5,7 @@ use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\ProtocolController;
 use App\Http\Controllers\UsersController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\DatesAndTermsController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -46,9 +46,16 @@ Route::delete('/addProtocol/{id}', [ProtocolController::class, 'deleteProtocol']
 
 // Users routers
 Route::get('/users', [UsersController::class, 'getUsers']);
+Route::delete('/users/{id}', [UsersController::class, 'deleteUser']);
 Route::get('/searchUsers', [UsersController::class, 'searchUsers']);
+
+// Date and terms routes
+Route::post('/dates', [DatesAndTermsController::class, 'createSchoolCycle']);
+Route::get('/dates', [DatesAndTermsController::class, 'getSchoolCycle']);
+Route::get('/dates/all', [DatesAndTermsController::class, 'getAllSchoolCycles']);
 
 // Protected routes
 Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/keepalive', [AuthController::class, 'keepAlive']);
 });
