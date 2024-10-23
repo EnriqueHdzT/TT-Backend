@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Models\Student;
 use App\Models\Staff;
@@ -16,15 +17,16 @@ class UsersController extends Controller
         'staff' => ['staff_id', 'altern_email', 'phone_number', 'lastname', 'second_lastname', 'name'],
         'users' => ['email']
     ];
-    
+
     protected $columnsToDoSearchOnWithSpace = [
         'students' => ['lastname', 'second_lastname', 'name'],
         'staff' => ['lastname', 'second_lastname', 'name']
     ];
-    
+
     protected $wantedUsers = 9;
 
-    public function searchUsers(Request $request) {
+    public function searchUsers(Request $request)
+    {
         $request->validate([
             'field' => 'required|string',
             'page' => 'required|int'
@@ -39,15 +41,15 @@ class UsersController extends Controller
         $uniqueUserIds = [];
 
         // If not spaces are found
-        if(strpos($field, ' ') === false){
-            foreach($this->columnsToDoSearchOnNoSpace as $table => $columns){
+        if (strpos($field, ' ') === false) {
+            foreach ($this->columnsToDoSearchOnNoSpace as $table => $columns) {
 
-                foreach($columns as $column) {
+                foreach ($columns as $column) {
 
                     if ($table === 'users') {
                         // Perform the search in the users table
                         $usersFound = DB::table($table)
-                            ->where(function($queryBuilder) use ($column, $field) {
+                            ->where(function ($queryBuilder) use ($column, $field) {
                                 $queryBuilder->where(DB::raw("LOWER(\"$column\")"), 'LIKE', strtolower($field) . '%');
                             })
                             ->get();
@@ -60,7 +62,7 @@ class UsersController extends Controller
                                     $staff = Staff::where('id', $user->id)->first();
                                     $email = $user->email;
 
-                                    if($staff){
+                                    if ($staff) {
                                         $user = $staff;
                                         $user->email = $email;
                                         unset($user->birth_date);
@@ -84,11 +86,11 @@ class UsersController extends Controller
                         }
                     } else {
                         $usersFound = DB::table($table)
-                            ->where(function($queryBuilder) use ($column, $field) {
+                            ->where(function ($queryBuilder) use ($column, $field) {
                                 $queryBuilder->where(DB::raw("LOWER(\"$column\")"), 'LIKE', strtolower($field) . '%');
                             })
                             ->get();
-                        
+
                         if (!empty($usersFound)) {
                             foreach ($usersFound as $userFound) {
                                 $user = User::where('id', $userFound->id)->first();
@@ -106,11 +108,8 @@ class UsersController extends Controller
                         }
                     }
                 }
-
             }
-        } 
-        
-        else {
+        } else {
             $searchTerms = explode(' ', $field);
 
             foreach ($this->columnsToDoSearchOnWithSpace as $table => $columns) {
@@ -120,7 +119,7 @@ class UsersController extends Controller
                 $permutations = $this->generatePermutations($searchTerms);
                 foreach ($permutations as $permutation) {
                     $usersFound = DB::table($table);
-                
+
                     $usersFound->where(function ($query) use ($columns, $permutation) {
                         foreach ($permutation as $term) {
                             $query->where(function ($query) use ($columns, $term) {
@@ -130,39 +129,41 @@ class UsersController extends Controller
                             });
                         }
                     });
-                
-            $usersFound = $usersFound->get()->toArray();
-        
-            // Check if any user was found
-            if (!empty($usersFound)) {
-                foreach ($usersFound as $user) {
-                    if (!in_array($user->id, $uniqueUserIds)) {
-                        $uniqueUserIds[] = $user->id;
-                        unset($user->id);
-                        unset($user->birth_date);
-                        unset($user->altern_email);
-                        unset($user->phone_number);
-                        unset($user->created_at);
-                        unset($user->updated_at);
-                        $usersResponse[$table][] = $user;
+
+                    $usersFound = $usersFound->get()->toArray();
+
+                    // Check if any user was found
+                    if (!empty($usersFound)) {
+                        foreach ($usersFound as $user) {
+                            if (!in_array($user->id, $uniqueUserIds)) {
+                                $uniqueUserIds[] = $user->id;
+                                unset($user->id);
+                                unset($user->birth_date);
+                                unset($user->altern_email);
+                                unset($user->phone_number);
+                                unset($user->created_at);
+                                unset($user->updated_at);
+                                $usersResponse[$table][] = $user;
+                            }
+                        }
                     }
                 }
             }
-        }
-    }
         }
         return $usersResponse;
     }
 
     // Function to generate permutations of search terms
-    private function generatePermutations($terms) {
+    private function generatePermutations($terms)
+    {
         $result = [];
         $length = count($terms);
         $this->permute($terms, 0, $length - 1, $result);
         return $result;
     }
 
-    private function permute(&$terms, $left, $right, &$result) {
+    private function permute(&$terms, $left, $right, &$result)
+    {
         if ($left === $right) {
             $result[] = $terms;
         } else {
@@ -173,28 +174,17 @@ class UsersController extends Controller
             }
         }
     }
-    
-    private function swap(&$a, &$b) {
+
+    private function swap(&$a, &$b)
+    {
         $temp = $a;
         $a = $b;
         $b = $temp;
     }
 
-    public function checkIfUserExist(Request $request) {
-        $request->validate([
-            'email' => 'required|string',
-            'userType' => 'required|in:Student,Staff'
-        ], [
-            '*' => 'Error in data'
-        ]);
-        $user = User::where('email', $request->email)->first();
-        if($user && $user->$request->userType){
-            return response()->json([], 200);
-        }
-        return response()->json(['message' => 'Usuario no encontrado'], 404);
-    }
 
-    public function getUsers(Request $request) {
+    public function getUsers(Request $request)
+    {
         $rules = [
             'userType' => 'nullable|in:Alumnos,Docentes',
             'precedence' => 'nullable|in:Interino,Externo',
@@ -205,15 +195,15 @@ class UsersController extends Controller
         ];
 
         $headers = [];
-        foreach ($rules as $header => $rule){
+        foreach ($rules as $header => $rule) {
             $headerValue = $request->header($header);
-            if($headerValue !== null){
+            if ($headerValue !== null) {
                 $headers[$header] = is_array($headerValue) ? $headerValue[0] : $headerValue;
             }
         }
 
         $validator = Validator::make($headers, $rules);
-        if($validator->fails()){
+        if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
@@ -225,112 +215,111 @@ class UsersController extends Controller
         $usersFound = [];
 
         // Get users based on filters
-        if(!isset($filters['userType'])) {
+        if (!isset($filters['userType'])) {
             $usersFound = User::orderBy('created_at', 'desc')
-            ->latest()
-            ->skip(($page-1)*$this->wantedUsers)
-            ->take($page*$this->wantedUsers)
-            ->with('student')
-            ->with('staff')
-            ->get();
-            $totalPages = ceil(User::count()/9);
-        } elseif($filters['userType'] === "Docentes") {
-            if(!array_key_exists("precedence", $filters)){
-                $usersFound = User::orderBy('created_at', 'desc')
                 ->latest()
-                ->skip(($page-1)*$this->wantedUsers)
-                ->take($page*$this->wantedUsers)
-                ->whereHas('staff')
+                ->skip(($page - 1) * $this->wantedUsers)
+                ->take($page * $this->wantedUsers)
+                ->with('student')
                 ->with('staff')
                 ->get();
-                $totalPages = ceil(Staff::count()/9);
-            } elseif(!array_key_exists("academy", $filters)){
-                if($filters['precedence'] === "Interino"){
+            $totalPages = ceil(User::count() / 9);
+        } elseif ($filters['userType'] === "Docentes") {
+            if (!array_key_exists("precedence", $filters)) {
+                $usersFound = User::orderBy('created_at', 'desc')
+                    ->latest()
+                    ->skip(($page - 1) * $this->wantedUsers)
+                    ->take($page * $this->wantedUsers)
+                    ->whereHas('staff')
+                    ->with('staff')
+                    ->get();
+                $totalPages = ceil(Staff::count() / 9);
+            } elseif (!array_key_exists("academy", $filters)) {
+                if ($filters['precedence'] === "Interino") {
                     $usersFound = User::whereHas('staff', function ($query) use ($filters) {
                         $query->where('precedence', 'ESCOM');
                     })
-                    ->orderBy('created_at', 'desc')
-                    ->latest()
-                    ->skip(($page-1)*$this->wantedUsers)
-                    ->take($page*$this->wantedUsers)
-                    ->with('staff')
-                    ->get();
-                    $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->count()/9);
+                        ->orderBy('created_at', 'desc')
+                        ->latest()
+                        ->skip(($page - 1) * $this->wantedUsers)
+                        ->take($page * $this->wantedUsers)
+                        ->with('staff')
+                        ->get();
+                    $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->count() / 9);
                 } elseif ($filters['precedence'] === "Externo") {
                     $usersFound = User::whereHas('staff', function ($query) use ($filters) {
-                        $query->where('precedence', '!=' , 'ESCOM');
+                        $query->where('precedence', '!=', 'ESCOM');
                     })
-                    ->orderBy('created_at', 'desc')
-                    ->latest()
-                    ->skip(($page-1)*$this->wantedUsers)
-                    ->take($page*$this->wantedUsers)
-                    ->with('staff')
-                    ->get();
-                    $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->count()/9);
+                        ->orderBy('created_at', 'desc')
+                        ->latest()
+                        ->skip(($page - 1) * $this->wantedUsers)
+                        ->take($page * $this->wantedUsers)
+                        ->with('staff')
+                        ->get();
+                    $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->count() / 9);
                 }
             } else {
                 $usersFound = User::whereHas('staff', function ($query) use ($filters) {
                     $query->where('precedence', 'ESCOM')
-                          ->where('academy', $filters['academy']);
+                        ->where('academy', $filters['academy']);
                 })
-                ->orderBy('created_at', 'desc')
-                ->latest()
-                ->skip(($page-1)*$this->wantedUsers)
-                ->take($page*$this->wantedUsers)
-                ->with('staff')
-                ->get();
-                $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->where('academy', $filters['academy'])->count()/9);
+                    ->orderBy('created_at', 'desc')
+                    ->latest()
+                    ->skip(($page - 1) * $this->wantedUsers)
+                    ->take($page * $this->wantedUsers)
+                    ->with('staff')
+                    ->get();
+                $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->where('academy', $filters['academy'])->count() / 9);
             }
-            
-        } elseif($filters['userType'] === "Alumnos") {
-            if(!array_key_exists("career", $filters)){
+        } elseif ($filters['userType'] === "Alumnos") {
+            if (!array_key_exists("career", $filters)) {
                 $usersFound = User::orderBy('created_at', 'desc')
-                ->latest()
-                ->skip(($page-1)*$this->wantedUsers)
-                ->take($page*$this->wantedUsers)
-                ->whereHas('student')
-                ->with('student')
-                ->get();
-                $totalPages = ceil(Student::count()/9);
-            } elseif(!array_key_exists("curriculum", $filters)){
+                    ->latest()
+                    ->skip(($page - 1) * $this->wantedUsers)
+                    ->take($page * $this->wantedUsers)
+                    ->whereHas('student')
+                    ->with('student')
+                    ->get();
+                $totalPages = ceil(Student::count() / 9);
+            } elseif (!array_key_exists("curriculum", $filters)) {
                 $usersFound = User::whereHas('student', function ($query) use ($filters) {
                     $query->where('career', $filters['career']);
                 })
-                ->orderBy('created_at', 'desc')
-                ->latest()
-                ->skip(($page-1)*$this->wantedUsers)
-                ->take($page*$this->wantedUsers)
-                ->with('student')
-                ->get();
-                $totalPages = ceil(Student::where('career', $filters['career'])->count()/9);
+                    ->orderBy('created_at', 'desc')
+                    ->latest()
+                    ->skip(($page - 1) * $this->wantedUsers)
+                    ->take($page * $this->wantedUsers)
+                    ->with('student')
+                    ->get();
+                $totalPages = ceil(Student::where('career', $filters['career'])->count() / 9);
             } else {
                 $usersFound = User::whereHas('student', function ($query) use ($filters) {
                     $query->where('career', $filters['career'])
-                          ->where('curriculum', $filters['curriculum']);
+                        ->where('curriculum', $filters['curriculum']);
                 })
-                ->orderBy('created_at', 'desc')
-                ->latest()
-                ->skip(($page-1)*$this->wantedUsers)
-                ->take($page*$this->wantedUsers)
-                ->with('student')
-                ->get();
-                $totalPages = ceil(Student::where('career', $filters['career'])->where('curriculum', $filters['curriculum'])->count()/9);
+                    ->orderBy('created_at', 'desc')
+                    ->latest()
+                    ->skip(($page - 1) * $this->wantedUsers)
+                    ->take($page * $this->wantedUsers)
+                    ->with('student')
+                    ->get();
+                $totalPages = ceil(Student::where('career', $filters['career'])->where('curriculum', $filters['curriculum'])->count() / 9);
             }
         }
         $usersResponse = $usersFound;
 
         // Validate if users where found
-        if(count($usersResponse) === 0){
-            return response()->json(['message' => 'Usuarios no encontrados'], 404);    
+        if (count($usersResponse) === 0) {
+            return response()->json(['message' => 'Usuarios no encontrados'], 404);
         }
-        
-        foreach($usersResponse as $user){
-            
+
+        foreach ($usersResponse as $user) {
+
             unset($user['name']);
             unset($user['email_verified_at']);
             unset($user['created_at']);
             unset($user['updated_at']);
-            if(!$user['staff']){
+            if (!$user['staff']) {
                 unset($user['staff']);
                 unset($user['student']['id']);
                 unset($user['student']['']);
@@ -353,14 +342,60 @@ class UsersController extends Controller
         $usersResponse['numPages'] = $totalPages;
         return $usersResponse;
     }
-    public function deleteUser($id) {
+    public function deleteUser($id)
+    {
         $user = User::find($id);
 
-        if (!$user) {    
+        if (!$user) {
             return response()->json(['message' => 'Usuario no encontrado'], 404);
         }
 
         $user->delete();
         return response()->json(['message' => 'Estudiante eliminado exitosamente'], 200);
+    }
+
+    public function getSelfData()
+    {
+        $user = Auth::user();
+        $userData = [];
+
+        if ($user->student) {
+            $userData[] = $user->student;
+            $userData[0]["userType"] = "student";
+        } elseif ($user->staff) {
+            $userData[] = $user->staff;
+            $userData[0]["userType"] = "staff";
+        }
+        unset($userData[0]['id']);
+        unset($userData[0]['created_at']);
+        unset($userData[0]['updated_at']);
+
+        $userData[0]['email'] = $user->email;
+
+        return response()->json($userData, 200);
+    }
+
+    public function getUserData($id)
+    {
+        $user = User::where('id', $id)->first();
+        if (!$user) {
+            return response()->json(['message' => 'Usuario no encontrado'], 404);
+        }
+        $userData = [];
+
+        if ($user->student) {
+            $userData[] = $user->student;
+            $userData[0]["userType"] = "student";
+        } elseif ($user->staff) {
+            $userData[] = $user->staff;
+            $userData[0]["userType"] = "staff";
+        }
+        unset($userData[0]['id']);
+        unset($userData[0]['created_at']);
+        unset($userData[0]['updated_at']);
+
+        $userData[0]['email'] = $user->email;
+
+        return response()->json($userData, 200);
     }
 }
