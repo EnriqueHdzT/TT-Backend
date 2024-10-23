@@ -65,7 +65,7 @@ class ProtocolController extends Controller
                 $newUser->save();
                 
                 $newStudent = new Student();
-                $newStudent->user_id = $newUser->id;
+                $newStudent->id = $newUser->id;
                 $newStudent->name = $student['name'];
                 $newStudent->lastname = $student['lastname'];
                 $newStudent->second_lastname = $student['second_lastname'];
@@ -123,7 +123,7 @@ class ProtocolController extends Controller
                 $newUser->save();
                 
                 $newStaff = new Staff();
-                $newStaff->user_id = $newUser->id;
+                $newStaff->id = $newUser->id;
                 $newStaff->name = $director['name'];
                 $newStaff->lastname = $director['lastname'];
                 $newStaff->second_lastname = $director['second_lastname'];

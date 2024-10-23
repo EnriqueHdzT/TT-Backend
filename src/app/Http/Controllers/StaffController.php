@@ -31,7 +31,7 @@ class StaffController extends Controller
         // Crear el profesor asociado
         $staff = new Staff();
         // Asignar otros campos del profesor si es necesario
-        $staff->user_id = $user->id;
+        $staff->id = $user->id;
         $staff->lastname = $request->first_lastName;
         $staff->second_lastname = $request->second_lastName;
         $staff->name = $request->name;
@@ -53,7 +53,7 @@ class StaffController extends Controller
         }
 
         $staffData = $staff->toArray();
-        unset($staffData['user_id']);
+        unset($staffData['id']);
         unset($staffData['updated_at']);
         unset($staffData['created_at']);
 
@@ -67,7 +67,7 @@ class StaffController extends Controller
 
         foreach ($staffs as $staff) {
             $staffData = $staff->toArray();
-            unset($staffData['user_id']);
+            unset($staffData['id']);
             unset($staffData['updated_at']);
             unset($staffData['created_at']);
             $formattedStaffs[] = $staffData;
@@ -111,7 +111,7 @@ class StaffController extends Controller
             return response()->json(['message' => 'Profesor no encontrado'], 404);
         }
 
-        $user = User::find($staff->user_id);
+        $user = User::find($staff->id);
         $user->delete();
         $staff->delete();
         return response()->json(['message' => 'Profesor eliminado exitosamente'], 200);

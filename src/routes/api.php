@@ -45,7 +45,7 @@ Route::put('/addProtocol/{id}', [ProtocolController::class, 'updateProtocol']);
 Route::delete('/addProtocol/{id}', [ProtocolController::class, 'deleteProtocol']);
 
 // Users routers
-Route::get('/users', [UsersController::class, 'getUsers']);
+
 Route::delete('/users/{id}', [UsersController::class, 'deleteUser']);
 Route::get('/searchUsers', [UsersController::class, 'searchUsers']);
 
@@ -58,4 +58,6 @@ Route::get('/dates/all', [DatesAndTermsController::class, 'getAllSchoolCycles'])
 Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/keepalive', [AuthController::class, 'keepAlive']);
+    
+    Route::get('/users', [UsersController::class, 'getUsers']);
 });

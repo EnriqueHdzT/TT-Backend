@@ -56,14 +56,13 @@ class UsersController extends Controller
                             foreach ($usersFound as $user) {
                                 if (!in_array($user->id, $uniqueUserIds)) {
                                     $uniqueUserIds[] = $user->id;
-                                    $student = Student::where('user_id', $user->id)->first();
-                                    $staff = Staff::where('user_id', $user->id)->first();
+                                    $student = Student::where('id', $user->id)->first();
+                                    $staff = Staff::where('id', $user->id)->first();
                                     $email = $user->email;
 
                                     if($staff){
                                         $user = $staff;
                                         $user->email = $email;
-                                        unset($user->user_id);
                                         unset($user->birth_date);
                                         unset($user->altern_email);
                                         unset($user->phone_number);
@@ -73,7 +72,6 @@ class UsersController extends Controller
                                     } else {
                                         $user = $student;
                                         $user->email = $email;
-                                        unset($user->user_id);
                                         unset($user->birth_date);
                                         unset($user->altern_email);
                                         unset($user->phone_number);
@@ -97,7 +95,6 @@ class UsersController extends Controller
                                 if (!in_array($user->id, $uniqueUserIds)) {
                                     $uniqueUserIds[] = $user->id;
                                     $userFound->email = $user->email;
-                                    unset($userFound->user_id);
                                     unset($userFound->birth_date);
                                     unset($userFound->altern_email);
                                     unset($userFound->phone_number);
@@ -139,9 +136,9 @@ class UsersController extends Controller
             // Check if any user was found
             if (!empty($usersFound)) {
                 foreach ($usersFound as $user) {
-                    if (!in_array($user->user_id, $uniqueUserIds)) {
-                        $uniqueUserIds[] = $user->user_id;
-                        unset($user->user_id);
+                    if (!in_array($user->id, $uniqueUserIds)) {
+                        $uniqueUserIds[] = $user->id;
+                        unset($user->id);
                         unset($user->birth_date);
                         unset($user->altern_email);
                         unset($user->phone_number);
@@ -336,7 +333,7 @@ class UsersController extends Controller
             if(!$user['staff']){
                 unset($user['staff']);
                 unset($user['student']['id']);
-                unset($user['student']['user_id']);
+                unset($user['student']['']);
                 unset($user['student']['student_id']);
                 unset($user['student']['altern_email']);
                 unset($user['student']['phone_number']);
@@ -345,7 +342,7 @@ class UsersController extends Controller
             } else {
                 unset($user['student']);
                 unset($user['staff']['id']);
-                unset($user['staff']['user_id']);
+                unset($user['staff']['']);
                 unset($user['staff']['staff_id']);
                 unset($user['staff']['altern_email']);
                 unset($user['staff']['phone_number']);
