@@ -24,6 +24,8 @@ return new class extends Migration
             $table->dateTime('ord_end_eval_protocols')->nullable();
             $table->dateTime('ord_start_change_protocols')->nullable();
             $table->dateTime('ord_end_change_protocols')->nullable();
+            $table->dateTime('ord_start_second_eval_protocols')->nullable();
+            $table->dateTime('ord_end_second_eval_protocols')->nullable();
             
             $table->dateTime('ext_start_update_protocols')->nullable();
             $table->dateTime('ext_end__update_protocols')->nullable();
@@ -33,6 +35,8 @@ return new class extends Migration
             $table->dateTime('ext_end_eval_protocols')->nullable();
             $table->dateTime('ext_start_change_protocols')->nullable();
             $table->dateTime('ext_end_change_protocols')->nullable();
+            $table->dateTime('ext_start_second_eval_protocols')->nullable();
+            $table->dateTime('ext_end_second_eval_protocols')->nullable();
             $table->timestamps();
         });
     }
