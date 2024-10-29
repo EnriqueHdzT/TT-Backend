@@ -13,9 +13,39 @@ class DatesAndTermsController extends Controller
         'cycle' => ['required', 'string', 'regex:/^\d{4}\/[1-2]$/'],
     ];
 
+    private $dateRule = [
+        'status' => ['required', 'in:true,false'],
+        'ord_start_update_protocols' => ['date'],
+        'ord_end_update_protocols' => ['date'],
+        'ord_start_sort_protocols' => ['date'],
+        'ord_end_sort_protocols' => ['date'],
+        'ord_start_eval_protocols' => ['date'],
+        'ord_end_eval_protocols' => ['date'],
+        'ord_start_change_protocols' => ['date'],
+        'ord_end_change_protocols' => ['date'],
+        'ord_start_second_eval_protocols' => ['date'],
+        'ord_end_second_eval_protocols' => ['date'],
+        'ext_start_update_protocols' => ['date'],
+        'ext_end_update_protocols' => ['date'],
+        'ext_start_sort_protocols' => ['date'],
+        'ext_end_sort_protocols' => ['date'],
+        'ext_start_eval_protocols' => ['date'],
+        'ext_end_eval_protocols' => ['date'],
+        'ext_start_change_protocols' => ['date'],
+        'ext_end_change_protocols' => ['date'],
+        'ext_start_second_eval_protocols' => ['date'],
+        'ext_end_second_eval_protocols' => ['date'],
+    ];
+
     private function isValidCycleFormat(array $data): bool
     {
         $validator = Validator::make($data, $this->cycleRule);
+        return !$validator->fails();
+    }
+
+    private function isValidDate(array $date): bool
+    {
+        $validator = Validator::make($date, $this->dateRule);
         return !$validator->fails();
     }
 
@@ -69,6 +99,38 @@ class DatesAndTermsController extends Controller
             return response()->json([], 404);
         }
         return response()->json($schoolCycles, 200);
+    }
+
+    public function deleteSchoolCycle($cycle)
+    {
+        if (!$this->isValidCycleFormat(['cycle' => $cycle])) {
+            return response()->json(['error' => 'Error en la peticion'], 400);
+        }
+
+        $schoolCycle = DatesAndTerms::where('cycle', $cycle)->first();
+        if (!$schoolCycle) {
+            return response()->json(['error' => 'Periodo escolar no encontrado'], 404);
+        }
+        $schoolCycle->delete();
+        return response()->json([], 200);
+    }
+
+    public function updateSchoolCycle(Request $request)
+    {
+        $cycleData = $request->only('cycle');
+        $datesData = $request->except('cycle');
+
+        if (!$this->isValidCycleFormat($cycleData) || !$this->isValidDate($datesData)) {
+            return response()->json(['error' => 'Invalid request data'], 400);
+        }
+
+        $schoolCycle = DatesAndTerms::where('cycle', $request->cycle)->first();
+        if (!$schoolCycle) {
+            return response()->json(['error' => 'School cycle not found'], 404);
+        }
+
+        $schoolCycle->update($datesData);
+        return response()->json($datesData, 200);
     }
 
     public function checkIfUploadIsAvailable()

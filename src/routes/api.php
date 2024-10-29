@@ -44,21 +44,21 @@ Route::get('/addProtocol', [ProtocolController::class, 'readProtocols']);
 Route::put('/addProtocol/{id}', [ProtocolController::class, 'updateProtocol']);
 Route::delete('/addProtocol/{id}', [ProtocolController::class, 'deleteProtocol']);
 
-// Users routers
-
-// Date and terms routes
-Route::post('/dates', [DatesAndTermsController::class, 'createSchoolCycle']);
-Route::get('/dates', [DatesAndTermsController::class, 'getAllSchoolCycles']);
-Route::get('/date', [DatesAndTermsController::class, 'getSchoolCycleData']);
-
 // Protected routes
 Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/keepalive', [AuthController::class, 'keepAlive']);
-    
+
     Route::get('/users', [UsersController::class, 'getUsers']);
     Route::get('/user', [UsersController::class], 'getSelfData');
     Route::get('/user/{id}', [UsersController::class, 'getUserData']);
     Route::delete('/user/{id}', [UsersController::class, 'deleteUser']);
     Route::get('/searchUsers', [UsersController::class, 'searchUsers']);
+
+    Route::post('/dates', [DatesAndTermsController::class, 'createSchoolCycle']);
+    Route::get('/dates', [DatesAndTermsController::class, 'getAllSchoolCycles']);
+    Route::get('/date', [DatesAndTermsController::class, 'getSchoolCycleData']);
+    Route::put('/date', [DatesAndTermsController::class, 'updateSchoolCycle']);
+    Route::delete('/date/{id}', [DatesAndTermsController::class, 'deleteSchoolCycle']);
+    Route::get('/checkUpload', [DatesAndTermsController::class, 'checkIfUploadIsAvailable']);
 });
