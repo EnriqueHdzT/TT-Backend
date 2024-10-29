@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('cycle', 6)->unique();
             $table->boolean('status')->default(false);
             $table->dateTime('ord_start_update_protocols')->nullable();
-            $table->dateTime('ord_end__update_protocols')->nullable();
+            $table->dateTime('ord_end_update_protocols')->nullable();
             $table->dateTime('ord_start_sort_protocols')->nullable();
             $table->dateTime('ord_end_sort_protocols')->nullable();
             $table->dateTime('ord_start_eval_protocols')->nullable();
@@ -28,7 +28,7 @@ return new class extends Migration
             $table->dateTime('ord_end_second_eval_protocols')->nullable();
             
             $table->dateTime('ext_start_update_protocols')->nullable();
-            $table->dateTime('ext_end__update_protocols')->nullable();
+            $table->dateTime('ext_end_update_protocols')->nullable();
             $table->dateTime('ext_start_sort_protocols')->nullable();
             $table->dateTime('ext_end_sort_protocols')->nullable();
             $table->dateTime('ext_start_eval_protocols')->nullable();
