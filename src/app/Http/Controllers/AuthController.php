@@ -9,6 +9,9 @@ use App\Models\Staff;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\BienvenidoVerifMail;
 
 class AuthController extends Controller
 {
@@ -29,16 +32,19 @@ class AuthController extends Controller
 
             $validator = Validator::make($request->all(), $rules);
             if ($validator->fails()) {
-                return response()->json(['message' => 'Los datos no cumplen con la estructura no esperada'], 422);
+                return response()->json(['message' => $validator->messages()], 422);
             }
 
             if (User::where('email', $request->email)->first()) {
                 return response(['message' => 'Correo ya registrado'], 409);
             }
 
+            $verificationToken = Str::random(60);
+
             $newUser = User::create([
                 'email' => $request->email,
                 'password' => $request->password,
+                'verification_token' => $verificationToken,
             ]);
 
             $token = $newUser->createToken('RegisterToken', []);
@@ -57,11 +63,20 @@ class AuthController extends Controller
             $newStudent->curriculum = $request->curriculum;
             $newStudent->save();
 
+            $verificationUrl = url('/api/verify-email/' . $verificationToken);
+
+
+            Mail::to($newUser->email)->send(new BienvenidoVerifMail($newUser, $verificationUrl));
+            
+            if (Mail::failures()) {
+                // Aquí puedes manejar el fallo, por ejemplo, loguearlo
+                return response()->json(['message' => 'Error al enviar el correo.'], 500);
+            }
             // TODO - @EMAIL Agregar funcion que envie email para verificar correo
 
             return response([], 200);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Hubo un error en el servidor'], 500);
+            return response()->json(['message' => $e], 500);
         }
     }
 

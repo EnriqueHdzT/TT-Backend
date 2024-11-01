@@ -63,6 +63,10 @@ Route::get('/correo', function() {
     return "Mensaje Enviado";
 })->name('api.correo');
 
+// Verificar Email
+Route::get('/verify-email/{token}', [AuthController::class, 'VerifyMail']);
+
+
 // Protected routes
 Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::post('/logout', [AuthController::class, 'logout']);
