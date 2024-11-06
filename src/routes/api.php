@@ -59,6 +59,6 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::get('/dates', [DatesAndTermsController::class, 'getAllSchoolCycles']);
     Route::get('/date', [DatesAndTermsController::class, 'getSchoolCycleData']);
     Route::put('/date', [DatesAndTermsController::class, 'updateSchoolCycle']);
-    Route::delete('/date/{id}', [DatesAndTermsController::class, 'deleteSchoolCycle']);
+    Route::delete('/date', [DatesAndTermsController::class, 'deleteSchoolCycle']);
     Route::get('/checkUpload', [DatesAndTermsController::class, 'checkIfUploadIsAvailable']);
 });

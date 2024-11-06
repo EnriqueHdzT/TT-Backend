@@ -101,15 +101,16 @@ class DatesAndTermsController extends Controller
         return response()->json($schoolCycles, 200);
     }
 
-    public function deleteSchoolCycle($cycle)
+    public function deleteSchoolCycle(Request $request)
     {
-        if (!$this->isValidCycleFormat(['cycle' => $cycle])) {
+        $requestCycle = $request->only('cycle');
+        if (!$this->isValidCycleFormat($requestCycle)) {
             return response()->json(['error' => 'Error en la peticion'], 400);
         }
 
-        $schoolCycle = DatesAndTerms::where('cycle', $cycle)->first();
+        $schoolCycle = DatesAndTerms::where('cycle', $requestCycle['cycle'])->first();
         if (!$schoolCycle) {
-            return response()->json(['error' => 'Periodo escolar no encontrado'], 404);
+            return response()->json(['error' => 'School cycle not found'], 404);
         }
         $schoolCycle->delete();
         return response()->json([], 200);
@@ -130,7 +131,7 @@ class DatesAndTermsController extends Controller
         }
 
         $schoolCycle->update($datesData);
-        return response()->json($datesData, 200);
+        return response()->json([], 200);
     }
 
     public function checkIfUploadIsAvailable()
