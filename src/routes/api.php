@@ -54,6 +54,8 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::get('/user/{id}', [UsersController::class, 'getUserData']);
     Route::delete('/user/{id}', [UsersController::class, 'deleteUser']);
     Route::get('/searchUsers', [UsersController::class, 'searchUsers']);
+    Route::post('/createStudent', [UsersController::class, 'createStudent']);
+    Route::post('/createStaff', [UsersController::class, 'createStaff']);
 
     Route::post('/dates', [DatesAndTermsController::class, 'createSchoolCycle']);
     Route::get('/dates', [DatesAndTermsController::class, 'getAllSchoolCycles']);

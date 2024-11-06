@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Models\Student;
 use App\Models\Staff;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UsersController extends Controller
 {
@@ -397,5 +399,82 @@ class UsersController extends Controller
         $userData[0]['email'] = $user->email;
 
         return response()->json($userData, 200);
+    }
+
+    public function createStudent(Request $request){
+        $rules = [
+            'email' => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@alumno\.ipn\.mx$/',
+            'name' => 'required|string',
+            'lastName' => 'required|string',
+            'secondLastName' => 'string',
+            'boleta' => 'required|string|size:10',
+            'career' => 'required|in:ISW,IIA,LCD',
+            'curriculum' => 'required|in:2009,2020',
+        ];
+
+        $validator = Validator::make($request->all(), $rules);
+        if ($validator->fails()) {
+            return response()->json(['message' => 'Los datos no cumplen con la estructura no esperada'], 422);
+        }
+
+        $user = User::where('email', $request->email)->first();
+        if ($user) {
+            return response()->json(['message' => 'Ya existe un usuario con este correo'], 422);
+        }
+        $user = new User();
+        $user->email = $request->email;
+        $user->password = Hash::make(Str::random(12));
+        $user->save();
+
+        $student = new Student();
+        $student->id = $user->id;
+        $student->name = $request->name;
+        $student->lastname = $request->lastName;
+        $request->secondLastName == null ? $student->second_lastname = null : $student->second_lastname = $request->secondLastName;
+        $student->student_id = $request->boleta;
+        $student->career = $request->career;
+        $student->curriculum = $request->curriculum;
+        $student->save();
+
+        
+        return response()->json(['message' => 'Estudiante creado exitosamente'], 200);
+    }
+
+    public function createStaff(Request $request){
+        $rules = [
+            'email' => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@ipn\.mx$/',
+            'name' => 'required|string',
+            'lastName' => 'required|string',
+            'secondLastName' => 'string',
+            'precedence' => 'required|string',
+            'academy' => 'string',
+            'userType' => 'required|in:Prof, PresAcad, JefeDepAcad, AnaCATT , SecEjec, SecTec, Presidente',
+        ];
+
+        $validator = Validator::make($request->all(), $rules);
+        if ($validator->fails()) {
+            return response()->json(['message' => $validator->errors()], 422);
+        }
+
+        $user = User::where('email', $request->email)->first();
+        if ($user) {
+            return response()->json(['message' => 'Ya existe un usuario con este correo'], 422);
+        }
+        $user = new User();
+        $user->email = $request->email;
+        $user->password = Hash::make(Str::random(12));
+        $user->save();
+
+        $staff = new Staff();
+        $staff->id = $user->id;
+        $staff->name = $request->name;
+        $staff->lastname = $request->lastName;
+        $request->secondLastName == null ? $staff->second_lastname = null : $staff->second_lastname = $request->secondLastName;
+        $staff->precedence = $request->precedence;
+        $staff->academy = $request->academy;
+        $staff->staff_type = $request->userType;
+        $staff->save();
+        
+        return response()->json(['message' => 'Profesor creado exitosamente'], 200);
     }
 }
