@@ -1,5 +1,6 @@
 <?php
 
+
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StaffController;
@@ -63,14 +64,14 @@ Route::get('/correo', function() {
     return "Mensaje Enviado";
 })->name('api.correo');
 
-// Verificar Email
-Route::get('/verify-email/{token}', [AuthController::class, 'VerifyMail']);
-
-
 // Protected routes
 Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/keepalive', [AuthController::class, 'keepAlive']);
 });
 
-
+// Verificar Email
+Route::get('/verify-email/{id}', [UsersController::class, 'VerifyMail']);
+//Recuperar Contraseña
+Route::post('/recuperar-password', [AuthController::class, 'recuperarPassword']);
+Route::post('/reset-password/{id}', [AuthController::class, 'resetPassword']);

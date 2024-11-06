@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 
+use App\Mail\RecuperarContrasena;
 use App\Models\User;
 use App\Models\Student;
 use App\Models\Staff;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
@@ -39,12 +41,10 @@ class AuthController extends Controller
                 return response(['message' => 'Correo ya registrado'], 409);
             }
 
-            $verificationToken = Str::random(60);
-
             $newUser = User::create([
                 'email' => $request->email,
                 'password' => $request->password,
-                'verification_token' => $verificationToken,
+                'email_is_verified' => false,
             ]);
 
             $token = $newUser->createToken('RegisterToken', []);
@@ -63,15 +63,12 @@ class AuthController extends Controller
             $newStudent->curriculum = $request->curriculum;
             $newStudent->save();
 
-            $verificationUrl = url('/api/verify-email/' . $verificationToken);
+            $verificationUrl = url('/api/verify-email/' .($newUser->id));
 
 
             Mail::to($newUser->email)->send(new BienvenidoVerifMail($newUser, $verificationUrl));
-            
-            if (Mail::failures()) {
-                // Aquí puedes manejar el fallo, por ejemplo, loguearlo
-                return response()->json(['message' => 'Error al enviar el correo.'], 500);
-            }
+
+
             // TODO - @EMAIL Agregar funcion que envie email para verificar correo
 
             return response([], 200);
@@ -102,11 +99,9 @@ class AuthController extends Controller
                 $user = Auth::user();
 
                 // TODO - Terminar de implementar cuando funcionalidad de correo este lista
-                /* if ($user->email_is_verified == false) {
-                    // TODO - @EMAIL Agregar funcion de envio de corre
-                    
+                 if (!$user->email_is_verified) {
                     return response()->json(['message' => 'El correo no ha sido verificado. Por favor revise su correo.'], 401);
-                } */
+                }
                 $token = $user->createToken('SessionToken', []);
                 $accessToken = $token->accessToken;
                 $accessToken->update([
@@ -126,6 +121,7 @@ class AuthController extends Controller
             return response()->json(['message' => 'Hubo un error en el servidor', 'error' => $e->getMessage()], 500);
         }
     }
+    //Prueba de EMAIL
 
     public function logout(Request $request)
     {
@@ -173,4 +169,48 @@ class AuthController extends Controller
             return response()->json(['message' => 'Hubo un error en el servidor'], 500);
         }
     }
+
+    public function recuperarPassword(Request $request){
+        // Validar el correo electrónico
+        $request->validate([
+            'email' => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@alumno\.ipn\.mx$/'
+        ]);
+
+        // Verificar si el usuario existe
+        $user = User::where('email', $request->email)->first();
+        if (!$user) {
+            return response()->json(['message' => 'Correo no encontrado'], 404);
+        }
+
+        // URL de recuperación de contraseña usando el ID del usuario
+        $resetUrl = url('http://localhost:5174/recuperar/'.$user->id);
+
+        // Enviar correo electrónico
+        Mail::to($user->email)->send(new RecuperarContrasena($user, $resetUrl));
+
+        return response()->json(['message' => 'Enlace de recuperación enviado a tu correo.'], 200);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        // Validar la nueva contraseña
+        $validatedData = $request->validate([
+            'id' => 'required|exists:users,id',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        // Verificar si el usuario existe
+        $user = User::find($validatedData['id']);
+        if (!$user) {
+            return response()->json(['message' => 'Usuario no encontrado'], 404);
+        }
+
+        // Actualizar la contraseña
+        $user->update([
+            'password' => $validatedData['password'],
+        ]);
+
+        return response()->json(['message' => 'Contraseña actualizada exitosamente'], 200);
+    }
+
 }
