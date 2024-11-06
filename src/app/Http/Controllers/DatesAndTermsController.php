@@ -39,127 +39,159 @@ class DatesAndTermsController extends Controller
 
     private function isValidCycleFormat(array $data): bool
     {
-        $validator = Validator::make($data, $this->cycleRule);
-        return !$validator->fails();
+        try {
+            $validator = Validator::make($data, $this->cycleRule);
+            return !$validator->fails();
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     private function isValidDate(array $date): bool
     {
-        $validator = Validator::make($date, $this->dateRule);
-        return !$validator->fails();
+        try {
+            $validator = Validator::make($date, $this->dateRule);
+            return !$validator->fails();
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     public function createSchoolCycle(Request $request)
     {
-        $requestCycle = $request->only('cycle');
-        if (!$this->isValidCycleFormat($requestCycle) || $request->keys() !== ['cycle']) {
-            return response()->json(['error' => 'Error en la peticion'], 400);
-        }
+        try {
+            $requestCycle = $request->only('cycle');
+            if (!$this->isValidCycleFormat($requestCycle) || $request->keys() !== ['cycle']) {
+                return response()->json(['error' => 'Error en la peticion'], 400);
+            }
 
-        if (DatesAndTerms::whereCycle($requestCycle['cycle'])->exists()) {
+            if (DatesAndTerms::whereCycle($requestCycle['cycle'])->exists()) {
+                return response()->json([], 200);
+            }
+
+            $newCycle = new DatesAndTerms([
+                'cycle' => $requestCycle['cycle']
+            ]);
+
+            $newCycle->save();
+
             return response()->json([], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error en el servidor'], 500);
         }
-
-        $newCycle = new DatesAndTerms([
-            'cycle' => $requestCycle['cycle']
-        ]);
-
-        $newCycle->save();
-
-        return response()->json([], 200);
     }
 
     public function getSchoolCycleData(Request $request)
     {
-        if ($request->keys() !== ['cycle'] || !$this->isValidCycleFormat($request->only('cycle'))) {
-            return response()->json(['error' => 'Error en la peticion'], 400);
-        }
+        try {
+            if ($request->keys() !== ['cycle'] || !$this->isValidCycleFormat($request->only('cycle'))) {
+                return response()->json(['error' => 'Error en la peticion'], 400);
+            }
 
-        if (!empty($request->keys())) {
-            $schoolCycle = DatesAndTerms::where('cycle', $request->cycle)->first();
-        } else {
-            $schoolCycle = DatesAndTerms::orderByRaw("CAST(split_part(cycle, '/', 1) AS INTEGER) DESC")
-                ->orderByRaw("CAST(split_part(cycle, '/', 2) AS INTEGER) DESC")
-                ->first();
-        }
+            if (!empty($request->keys())) {
+                $schoolCycle = DatesAndTerms::where('cycle', $request->cycle)->first();
+            } else {
+                $schoolCycle = DatesAndTerms::orderByRaw("CAST(split_part(cycle, '/', 1) AS INTEGER) DESC")
+                    ->orderByRaw("CAST(split_part(cycle, '/', 2) AS INTEGER) DESC")
+                    ->first();
+            }
 
-        if (!$schoolCycle) {
-            return response()->json(['error' => 'School cycle not found'], 404);
-        }
+            if (!$schoolCycle) {
+                return response()->json(['error' => 'School cycle not found'], 404);
+            }
 
-        return response()->json($schoolCycle, 200);
+            return response()->json($schoolCycle, 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error en el servidor'], 500);
+        }
     }
 
     public function getAllSchoolCycles()
     {
-        $schoolCycles = DatesAndTerms::orderByRaw("CAST(split_part(cycle, '/', 1) AS INTEGER) DESC")
-            ->orderByRaw("CAST(split_part(cycle, '/', 2) AS INTEGER) DESC")
-            ->get('cycle');
-        if (!$schoolCycles) {
-            return response()->json([], 404);
+        try {
+            $schoolCycles = DatesAndTerms::orderByRaw("CAST(split_part(cycle, '/', 1) AS INTEGER) DESC")
+                ->orderByRaw("CAST(split_part(cycle, '/', 2) AS INTEGER) DESC")
+                ->get('cycle');
+            if (!$schoolCycles) {
+                return response()->json([], 404);
+            }
+            return response()->json($schoolCycles, 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error en el servidor'], 500);
         }
-        return response()->json($schoolCycles, 200);
     }
 
     public function deleteSchoolCycle(Request $request)
     {
-        $requestCycle = $request->only('cycle');
-        if (!$this->isValidCycleFormat($requestCycle)) {
-            return response()->json(['error' => 'Error en la peticion'], 400);
-        }
+        try {
+            $requestCycle = $request->only('cycle');
+            if (!$this->isValidCycleFormat($requestCycle)) {
+                return response()->json(['error' => 'Error en la peticion'], 400);
+            }
 
-        $schoolCycle = DatesAndTerms::where('cycle', $requestCycle['cycle'])->first();
-        if (!$schoolCycle) {
-            return response()->json(['error' => 'School cycle not found'], 404);
+            $schoolCycle = DatesAndTerms::where('cycle', $requestCycle['cycle'])->first();
+            if (!$schoolCycle) {
+                return response()->json(['error' => 'School cycle not found'], 404);
+            }
+            $schoolCycle->delete();
+            return response()->json([], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error en el servidor'], 500);
         }
-        $schoolCycle->delete();
-        return response()->json([], 200);
     }
 
     public function updateSchoolCycle(Request $request)
     {
-        $cycleData = $request->only('cycle');
-        $datesData = $request->except('cycle');
+        try {
+            $cycleData = $request->only('cycle');
+            $datesData = $request->except('cycle');
 
-        if (!$this->isValidCycleFormat($cycleData) || !$this->isValidDate($datesData)) {
-            return response()->json(['error' => 'Invalid request data'], 400);
+            if (!$this->isValidCycleFormat($cycleData) || !$this->isValidDate($datesData)) {
+                return response()->json(['error' => 'Invalid request data'], 400);
+            }
+
+            $schoolCycle = DatesAndTerms::where('cycle', $request->cycle)->first();
+            if (!$schoolCycle) {
+                return response()->json(['error' => 'School cycle not found'], 404);
+            }
+
+            $schoolCycle->update($datesData);
+            return response()->json([], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error en el servidor'], 500);
         }
-
-        $schoolCycle = DatesAndTerms::where('cycle', $request->cycle)->first();
-        if (!$schoolCycle) {
-            return response()->json(['error' => 'School cycle not found'], 404);
-        }
-
-        $schoolCycle->update($datesData);
-        return response()->json([], 200);
     }
 
     public function checkIfUploadIsAvailable()
     {
-        $activeCycles = DatesAndTerms::where('status', true)->get();
+        try {
+            $activeCycles = DatesAndTerms::where('status', true)->get();
 
-        if ($activeCycles->isEmpty()) {
+            if ($activeCycles->isEmpty()) {
+                return response()->json(['message' => 'No hay ciclos activos'], 404);
+            }
+
+            $activeCycles = $activeCycles->sortByDesc('cycle');
+            $currentDate = date('d-m-Y');
+
+            foreach ($activeCycles as $cycle) {
+                $ordStart = date('d-m-Y', strtotime($cycle->ord_start_update_protocols));
+                $ordEnd = date('d-m-Y', strtotime($cycle->ord_end_update_protocols));
+                $extStart = date('d-m-Y', strtotime($cycle->ext_start_update_protocols));
+                $extEnd = date('d-m-Y', strtotime($cycle->ext_end_update_protocols));
+
+                if (($currentDate >= $ordStart && $currentDate <= $ordEnd)) {
+                    return response()->json(['type' => 'ord', 'cycle' => $cycle->cycle], 200);
+                }
+
+                if (($currentDate >= $extStart && $currentDate <= $extEnd)) {
+                    return response()->json(['type' => 'ext', 'cycle' => $cycle->cycle], 200);
+                }
+            }
+
             return response()->json(['message' => 'No hay ciclos activos'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error en el servidor'], 500);
         }
-
-        $activeCycles = $activeCycles->sortByDesc('cycle');
-        $currentDate = date('d-m-Y');
-
-        foreach ($activeCycles as $cycle) {
-            $ordStart = date('d-m-Y', strtotime($cycle->ord_start_update_protocols));
-            $ordEnd = date('d-m-Y', strtotime($cycle->ord_end_update_protocols));
-            $extStart = date('d-m-Y', strtotime($cycle->ext_start_update_protocols));
-            $extEnd = date('d-m-Y', strtotime($cycle->ext_end_update_protocols));
-
-            if (($currentDate >= $ordStart && $currentDate <= $ordEnd)) {
-                return response()->json(['type' => 'ord', 'cycle' => $cycle->cycle], 200);
-            }
-
-            if (($currentDate >= $extStart && $currentDate <= $extEnd)) {
-                return response()->json(['type' => 'ext', 'cycle' => $cycle->cycle], 200);
-            }
-        }
-
-        return response()->json(['message' => 'No hay ciclos activos'], 404);
     }
 }
