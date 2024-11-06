@@ -11,10 +11,18 @@ use App\Models\User;
 use App\Models\Staff;
 use App\Models\Student;
 use App\Models\Protocol;
-
+use App\Services\FileService;
+use Illuminate\Support\Facades\Auth;
 
 class ProtocolController extends Controller
 {
+    protected $fileService;
+
+    public function __construct(FileService $fileService)
+    {
+        $this->fileService = $fileService;
+    }
+
     public function createProtocol(Request $request)
     {
         $request->validate([
@@ -228,5 +236,54 @@ class ProtocolController extends Controller
 
         $protocol->delete();
         return response()->json(['message' => 'Protocolo eliminado exitosamente'], 200);
+    }
+
+    public function getProtocolDoc(Request $request, $protocol_id)
+    {
+        $protocol = Protocol::where('protocol_id', $protocol_id)->first();
+        
+        if (!$protocol) {
+            return response()->json(['message' => 'Error'], 404);
+        }
+
+        //$protocolPath = $protocol_id.'/'.$protocol->pdfname; // descomentar cuando exista la columna
+        $protocolPath = $protocol_id . '/test.pdf';
+        $user = Auth::user();
+        $isStudent = $user->student()->exists();
+        $canAccess = false;
+
+        if($isStudent){
+            $protocols = $user->student->protocols;
+            if($this->checkIfExists($protocol_id, $protocols)){
+                $canAccess = true;
+            }
+        }else{
+            $staff = $user->staff;
+            switch($staff->type){
+                case 'AnaCATT':
+                    $canAccess = true;
+                    break;
+                // poner cases para los demás tipos de staff
+            }
+        }
+
+        if($canAccess){
+            return $this->fileService->getFile($protocolPath);
+        }else{
+            return response()->json(
+                ['message' => 'No tienes permiso para acceder a este recurso'], 
+                403
+            );
+        }
+
+    }
+
+    public function checkIfExists($protocol_id, $protocols){
+        foreach($protocols as $protocol){
+            if($protocol->protocol_id == $protocol_id){
+                return true;
+            }
+        }
+        return false;
     }
 }
