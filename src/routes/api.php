@@ -74,4 +74,4 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
 Route::get('/verify-email/{id}', [UsersController::class, 'VerifyMail']);
 //Recuperar Contraseña
 Route::post('/recuperar-password', [AuthController::class, 'recuperarPassword']);
-Route::post('/reset-password/{id}', [AuthController::class, 'resetPassword']);
+Route::post('/reset-password/{token}', [AuthController::class, 'resetPassword']);

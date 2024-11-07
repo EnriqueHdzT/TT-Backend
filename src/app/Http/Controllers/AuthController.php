@@ -182,8 +182,11 @@ class AuthController extends Controller
             return response()->json(['message' => 'Correo no encontrado'], 404);
         }
 
+        $user-> remember_token = Str::random(60);
+        $user->save();
+
         // URL de recuperación de contraseña usando el ID del usuario
-        $resetUrl = url('http://localhost:5174/recuperar/'.$user->id);
+        $resetUrl = url('http://localhost:5177/recuperar/'.$user->remember_token);
 
         // Enviar correo electrónico
         Mail::to($user->email)->send(new RecuperarContrasena($user, $resetUrl));
@@ -195,20 +198,22 @@ class AuthController extends Controller
     {
         // Validar la nueva contraseña
         $validatedData = $request->validate([
-            'id' => 'required|exists:users,id',
-            'password' => 'required|string|min:8|confirmed',
+            'token' => 'required|string|exists:users,remember_token',
+            'password' => 'required|string|size:64|confirmed',
         ]);
 
         // Verificar si el usuario existe
-        $user = User::find($validatedData['id']);
+        $user = User::where('remember_token', $validatedData['token'])->first();
         if (!$user) {
-            return response()->json(['message' => 'Usuario no encontrado'], 404);
+            return response()->json(['message' => 'Token invalido o usuario no encontrado'], 404);
         }
 
-        // Actualizar la contraseña
-        $user->update([
-            'password' => $validatedData['password'],
-        ]);
+        // Hashear la nueva contraseña usando bcrypt
+        $hashedPassword = Hash::make($validatedData['password']);
+        $user->password = $hashedPassword;
+        $user->remember_token = null;
+        $user->save();
+
 
         return response()->json(['message' => 'Contraseña actualizada exitosamente'], 200);
     }
