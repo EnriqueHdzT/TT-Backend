@@ -259,7 +259,7 @@ class ProtocolController extends Controller
             }
         }else{
             $staff = $user->staff;
-            switch($staff->type){
+            switch($staff->staff_type){
                 case 'AnaCATT':
                     $canAccess = true;
                     break;
