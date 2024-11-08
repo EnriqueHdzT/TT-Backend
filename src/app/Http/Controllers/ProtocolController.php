@@ -281,31 +281,43 @@ class ProtocolController extends Controller
     public function listProtocols(Request $request)
     {
         $user = Auth::user();
+        $elementsPerPage = 9;
         $isStudent = $user->student()->exists();
-        $protocols = [];
+        $protocolsQuery = null;
         $cycle = $request->cycle;
-        $page = $request->page;
+        $page = $request->page ?? 1;
         $searchBar = $request->searchBar;
 
-        if($isStudent){
-            //$protocols = $user->student->protocols; // todos los protocolos
-
-            $protocols = $user->student->protocols()->whereHas('datesAndTerms', function ($query) use ($cycle) {
+        if ($isStudent) {
+            $protocolsQuery = $user->student->protocols()->whereHas('datesAndTerms', function ($query) use ($cycle) {
                 $query->where('cycle', $cycle);
-            })->get(); // solo los protocolos del ciclo actual
-        }else{
+            });
+        } else {
             $staff = $user->staff;
-            switch($staff->staff_type){
+            switch ($staff->staff_type) {
                 case 'AnaCATT':
-                    $protocols = Protocol::whereHas('datesAndTerms', function ($query) use ($cycle) {
+                    $protocolsQuery = Protocol::whereHas('datesAndTerms', function ($query) use ($cycle) {
                         $query->where('cycle', $cycle);
-                    })->get();
+                    });
                     break;
-                // poner cases para los demás tipos de staff
+                // Add cases for other staff types
             }
         }
 
-        return response()->json(['protocols' => $protocols], 200);
+        if ($searchBar) {
+            $protocolsQuery->where(function ($query) use ($searchBar) {
+                $query->whereRaw('protocol_id ILIKE ?', ['%' . $searchBar . '%'])
+                      ->orWhereRaw('title ILIKE ?', ['%' . $searchBar . '%']);
+            });
+        }
+
+        $protocols = $protocolsQuery->paginate($elementsPerPage, ['*'], 'page', $page);
+
+        return response()->json([
+            'protocols' => $protocols->items(),
+            'current_page' => $protocols->currentPage(),
+            'total_pages' => $protocols->lastPage(),
+        ], 200);
     }
 
     public function checkIfExists($protocol_id, $protocols){
