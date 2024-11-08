@@ -46,6 +46,7 @@ Route::get('/addProtocol/{id}', [ProtocolController::class, 'readProtocol']);
 Route::get('/addProtocol', [ProtocolController::class, 'readProtocols']);
 Route::put('/addProtocol/{id}', [ProtocolController::class, 'updateProtocol']);
 Route::delete('/addProtocol/{id}', [ProtocolController::class, 'deleteProtocol']);
+Route::get('/getProtocolDoc/{id}', [ProtocolController::class, 'getProtocolDoc'])->middleware('auth:sanctum');
 
 // Email routes
 Route::get('/correo', function() {
