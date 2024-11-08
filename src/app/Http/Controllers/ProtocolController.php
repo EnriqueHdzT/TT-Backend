@@ -246,8 +246,8 @@ class ProtocolController extends Controller
             return response()->json(['message' => 'Error'], 404);
         }
 
-        //$protocolPath = $protocol_id.'/'.$protocol->pdfname; // descomentar cuando exista la columna
-        $protocolPath = $protocol_id . '/test.pdf';
+        $protocolPath = $protocol_id.'/'.$protocol->pdf; // descomentar cuando exista la columna
+
         $user = Auth::user();
         $isStudent = $user->student()->exists();
         $canAccess = false;
@@ -276,6 +276,36 @@ class ProtocolController extends Controller
             );
         }
 
+    }
+
+    public function listProtocols(Request $request)
+    {
+        $user = Auth::user();
+        $isStudent = $user->student()->exists();
+        $protocols = [];
+        $cycle = $request->cycle;
+        $page = $request->page;
+        $searchBar = $request->searchBar;
+
+        if($isStudent){
+            //$protocols = $user->student->protocols; // todos los protocolos
+
+            $protocols = $user->student->protocols()->whereHas('datesAndTerms', function ($query) use ($cycle) {
+                $query->where('cycle', $cycle);
+            })->get(); // solo los protocolos del ciclo actual
+        }else{
+            $staff = $user->staff;
+            switch($staff->staff_type){
+                case 'AnaCATT':
+                    $protocols = Protocol::whereHas('datesAndTerms', function ($query) use ($cycle) {
+                        $query->where('cycle', $cycle);
+                    })->get();
+                    break;
+                // poner cases para los demás tipos de staff
+            }
+        }
+
+        return response()->json(['protocols' => $protocols], 200);
     }
 
     public function checkIfExists($protocol_id, $protocols){
