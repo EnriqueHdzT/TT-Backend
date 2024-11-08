@@ -140,7 +140,6 @@ class UsersController extends Controller
                             if (!in_array($user->id, $uniqueUserIds)) {
                                 $uniqueUserIds[] = $user->id;
                                 unset($user->id);
-                                unset($user->birth_date);
                                 unset($user->altern_email);
                                 unset($user->phone_number);
                                 unset($user->created_at);
@@ -185,8 +184,24 @@ class UsersController extends Controller
     }
 
 
-    public function getUsers(Request $request)
+
+    public function VerifyMail($userId)
     {
+        $user = User::find($userId);
+
+        if ($user) {
+            $user->email_is_verified = true;
+            $user->save();
+            // Redirigir a la página principal con un mensaje de éxito
+            return redirect('http://localhost:5174/login')->with('message', 'Correo verificado correctamente.');
+
+        } else {
+            // Redirigir a la página principal con un mensaje de error
+            return redirect('/')->with('error', 'Usuario no encontrado.');
+        }
+    }
+
+    public function getUsers(Request $request) {
         $rules = [
             'userType' => 'nullable|in:Alumnos,Docentes',
             'precedence' => 'nullable|in:Interino,Externo',
@@ -275,6 +290,7 @@ class UsersController extends Controller
             }
         } elseif ($filters['userType'] === "Alumnos") {
             if (!array_key_exists("career", $filters)) {
+
                 $usersFound = User::orderBy('created_at', 'desc')
                     ->latest()
                     ->skip(($page - 1) * $this->wantedUsers)
@@ -316,7 +332,6 @@ class UsersController extends Controller
         }
 
         foreach ($usersResponse as $user) {
-
             unset($user['name']);
             unset($user['email_verified_at']);
             unset($user['created_at']);
@@ -344,6 +359,7 @@ class UsersController extends Controller
         $usersResponse['numPages'] = $totalPages;
         return $usersResponse;
     }
+
     public function deleteUser($id)
     {
         $user = User::find($id);
@@ -355,7 +371,7 @@ class UsersController extends Controller
         $user->delete();
         return response()->json(['message' => 'Estudiante eliminado exitosamente'], 200);
     }
-
+  
     public function getSelfData()
     {
         $user = Auth::user();
