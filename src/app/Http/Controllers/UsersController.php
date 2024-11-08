@@ -16,12 +16,12 @@ class UsersController extends Controller
         'staff' => ['staff_id', 'altern_email', 'phone_number', 'lastname', 'second_lastname', 'name'],
         'users' => ['email']
     ];
-    
+
     protected $columnsToDoSearchOnWithSpace = [
         'students' => ['lastname', 'second_lastname', 'name'],
         'staff' => ['lastname', 'second_lastname', 'name']
     ];
-    
+
     protected $wantedUsers = 9;
 
     public function searchUsers(Request $request) {
@@ -90,7 +90,7 @@ class UsersController extends Controller
                                 $queryBuilder->where(DB::raw("LOWER(\"$column\")"), 'LIKE', strtolower($field) . '%');
                             })
                             ->get();
-                        
+
                         if (!empty($usersFound)) {
                             foreach ($usersFound as $userFound) {
                                 $user = User::where('id', $userFound->id)->first();
@@ -111,8 +111,8 @@ class UsersController extends Controller
                 }
 
             }
-        } 
-        
+        }
+
         else {
             $searchTerms = explode(' ', $field);
 
@@ -123,7 +123,7 @@ class UsersController extends Controller
                 $permutations = $this->generatePermutations($searchTerms);
                 foreach ($permutations as $permutation) {
                     $usersFound = DB::table($table);
-                
+
                     $usersFound->where(function ($query) use ($columns, $permutation) {
                         foreach ($permutation as $term) {
                             $query->where(function ($query) use ($columns, $term) {
@@ -133,9 +133,9 @@ class UsersController extends Controller
                             });
                         }
                     });
-                
+
             $usersFound = $usersFound->get()->toArray();
-        
+
             // Check if any user was found
             if (!empty($usersFound)) {
                 foreach ($usersFound as $user) {
@@ -176,7 +176,7 @@ class UsersController extends Controller
             }
         }
     }
-    
+
     private function swap(&$a, &$b) {
         $temp = $a;
         $a = $b;
@@ -195,6 +195,22 @@ class UsersController extends Controller
             return response()->json([], 200);
         }
         return response()->json(['message' => 'Usuario no encontrado'], 404);
+    }
+
+    public function VerifyMail($userId)
+    {
+        $user = User::find($userId);
+
+        if ($user) {
+            $user->email_is_verified = true;
+            $user->save();
+            // Redirigir a la página principal con un mensaje de éxito
+            return redirect('http://localhost:5174/login')->with('message', 'Correo verificado correctamente.');
+
+        } else {
+            // Redirigir a la página principal con un mensaje de error
+            return redirect('/')->with('error', 'Usuario no encontrado.');
+        }
     }
 
     public function getUsers(Request $request) {
@@ -284,7 +300,7 @@ class UsersController extends Controller
                 ->get();
                 $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->where('academy', $filters['academy'])->count()/9);
             }
-            
+
         } elseif($filters['userType'] === "Alumnos") {
             if(!array_key_exists("career", $filters)){
                 $usersFound = User::orderBy('created_at', 'desc')
@@ -324,11 +340,11 @@ class UsersController extends Controller
 
         // Validate if users where found
         if(count($usersResponse) === 0){
-            return response()->json(['message' => 'Usuarios no encontrados'], 404);    
+            return response()->json(['message' => 'Usuarios no encontrados'], 404);
         }
-        
+
         foreach($usersResponse as $user){
-            
+
             unset($user['name']);
             unset($user['email_verified_at']);
             unset($user['created_at']);
@@ -356,10 +372,11 @@ class UsersController extends Controller
         $usersResponse['numPages'] = $totalPages;
         return $usersResponse;
     }
+
     public function deleteUser($id) {
         $user = User::find($id);
 
-        if (!$user) {    
+        if (!$user) {
             return response()->json(['message' => 'Usuario no encontrado'], 404);
         }
 
