@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('protocols', function (Blueprint $table) {
-            $table->text('pdf')->nullable()->change();
+            $table->string('pdf')->nullable()->change();
         });
     }
 
@@ -21,8 +21,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('protocols', function (Blueprint $table) {
-            $table->binary('price')->nullable()->change();  // Change back to byte
-        });
+        // Use raw SQL to change the column back to bytea with casting
+        DB::statement('ALTER TABLE protocols ALTER COLUMN pdf TYPE bytea USING pdf::bytea');
     }
 };
