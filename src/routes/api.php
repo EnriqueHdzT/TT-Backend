@@ -47,16 +47,6 @@ Route::get('/addProtocol', [ProtocolController::class, 'readProtocols']);
 Route::put('/addProtocol/{id}', [ProtocolController::class, 'updateProtocol']);
 Route::delete('/addProtocol/{id}', [ProtocolController::class, 'deleteProtocol']);
 
-// Users routers
-Route::get('/users', [UsersController::class, 'getUsers']);
-Route::delete('/users/{id}', [UsersController::class, 'deleteUser']);
-Route::get('/searchUsers', [UsersController::class, 'searchUsers']);
-
-// Date and terms routes
-Route::post('/dates', [DatesAndTermsController::class, 'createSchoolCycle']);
-Route::get('/dates', [DatesAndTermsController::class, 'getSchoolCycle']);
-Route::get('/dates/all', [DatesAndTermsController::class, 'getAllSchoolCycles']);
-
 // Email routes
 Route::get('/correo', function() {
     Mail::to('franjav.cast@gmail.com')
@@ -68,6 +58,21 @@ Route::get('/correo', function() {
 Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/keepalive', [AuthController::class, 'keepAlive']);
+
+    Route::get('/users', [UsersController::class, 'getUsers']);
+    Route::get('/user', [UsersController::class], 'getSelfData');
+    Route::get('/user/{id}', [UsersController::class, 'getUserData']);
+    Route::delete('/user/{id}', [UsersController::class, 'deleteUser']);
+    Route::get('/searchUsers', [UsersController::class, 'searchUsers']);
+    Route::post('/createStudent', [UsersController::class, 'createStudent']);
+    Route::post('/createStaff', [UsersController::class, 'createStaff']);
+
+    Route::post('/dates', [DatesAndTermsController::class, 'createSchoolCycle']);
+    Route::get('/dates', [DatesAndTermsController::class, 'getAllSchoolCycles']);
+    Route::get('/date', [DatesAndTermsController::class, 'getSchoolCycleData']);
+    Route::put('/date', [DatesAndTermsController::class, 'updateSchoolCycle']);
+    Route::delete('/date', [DatesAndTermsController::class, 'deleteSchoolCycle']);
+    Route::get('/checkUpload', [DatesAndTermsController::class, 'checkIfUploadIsAvailable']);
 });
 
 // Verificar Email

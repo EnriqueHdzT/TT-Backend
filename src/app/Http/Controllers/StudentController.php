@@ -32,7 +32,7 @@ class StudentController extends Controller
         // Crear el estudiante asociado
         $student = new Student();
         // Asignar otros campos del estudiante si es necesario
-        $student->user_id = $user->id;
+        $student->id = $user->id;
         $student->lastname = $request->first_lastName;
         $student->second_lastname = $request->second_lastName;
         $student->name = $request->name;
@@ -54,7 +54,7 @@ class StudentController extends Controller
         }
 
         $studentData = $student->toArray();
-        unset($studentData['user_id']);
+        unset($studentData['id']);
         unset($studentData['updated_at']);
         unset($studentData['created_at']);
 
@@ -68,7 +68,7 @@ class StudentController extends Controller
 
         foreach ($students as $student) {
             $studentData = $student->toArray();
-            unset($studentData['user_id']);
+            unset($studentData['id']);
             unset($studentData['updated_at']);
             unset($studentData['created_at']);
             $formattedStudents[] = $studentData;
@@ -112,7 +112,7 @@ class StudentController extends Controller
             return response()->json(['message' => 'Estudiante no encontrado'], 404);
         }
 
-        $user = User::find($student->user_id);
+        $user = User::find($student->id);
         $user->delete();
         $student->delete();
         return response()->json(['message' => 'Estudiante eliminado exitosamente'], 200);
