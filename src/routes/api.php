@@ -56,7 +56,7 @@ Route::get('/correo', function() {
 })->name('api.correo');
 
 // Protected routes
-Route::group(['middleware' => ['auth:sanctum']], function () {
+Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/keepalive', [AuthController::class, 'keepAlive']);
 
