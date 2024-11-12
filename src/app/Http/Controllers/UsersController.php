@@ -194,14 +194,14 @@ class UsersController extends Controller
             $user->save();
             // Redirigir a la página principal con un mensaje de éxito
             return redirect('http://localhost:5174/login')->with('message', 'Correo verificado correctamente.');
-
         } else {
             // Redirigir a la página principal con un mensaje de error
             return redirect('/')->with('error', 'Usuario no encontrado.');
         }
     }
 
-    public function getUsers(Request $request) {
+    public function getUsers(Request $request)
+    {
         $rules = [
             'userType' => 'nullable|in:Alumnos,Docentes',
             'precedence' => 'nullable|in:Interino,Externo',
@@ -371,26 +371,14 @@ class UsersController extends Controller
         $user->delete();
         return response()->json(['message' => 'Estudiante eliminado exitosamente'], 200);
     }
-  
-    public function getSelfData()
+
+    public function getSelfId()
     {
         $user = Auth::user();
-        $userData = [];
-
-        if ($user->student) {
-            $userData[] = $user->student;
-            $userData[0]["userType"] = "student";
-        } elseif ($user->staff) {
-            $userData[] = $user->staff;
-            $userData[0]["userType"] = "staff";
+        if (!$user) {
+            return response()->json(['message' => 'No se pudo obtener el ID del usuario'], 404);
         }
-        unset($userData[0]['id']);
-        unset($userData[0]['created_at']);
-        unset($userData[0]['updated_at']);
-
-        $userData[0]['email'] = $user->email;
-
-        return response()->json($userData, 200);
+        return response()->json(['id' => $user->id], 200);
     }
 
     public function getUserData($id)
@@ -401,13 +389,27 @@ class UsersController extends Controller
         }
         $userData = [];
 
-        if ($user->student) {
-            $userData[] = $user->student;
+        $specialTypes = ['AnaCATT', 'SecEjec', 'SecTec', 'Presidente'];
+        $userAsking = Auth::user();
+
+        if (!$userAsking->staff) {
+            $userData[] = $userAsking->student;
             $userData[0]["userType"] = "student";
-        } elseif ($user->staff) {
-            $userData[] = $user->staff;
-            $userData[0]["userType"] = "staff";
+        } else {
+            if (in_array($userAsking->staff->userType, $specialTypes)) {
+                if ($user->student) {
+                    $userData[] = $user->student;
+                    $userData[0]["userType"] = "student";
+                } elseif ($user->staff) {
+                    $userData[] = $user->staff;
+                    $userData[0]["userType"] = "staff";
+                }
+            } else {
+                $userData[] = $userAsking->staff;
+                $userData[0]["userType"] = "staff";
+            }
         }
+
         unset($userData[0]['id']);
         unset($userData[0]['created_at']);
         unset($userData[0]['updated_at']);
@@ -417,7 +419,8 @@ class UsersController extends Controller
         return response()->json($userData, 200);
     }
 
-    public function createStudent(Request $request){
+    public function createStudent(Request $request)
+    {
         $rules = [
             'email' => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@alumno\.ipn\.mx$/',
             'name' => 'required|string',
@@ -452,11 +455,12 @@ class UsersController extends Controller
         $student->curriculum = $request->curriculum;
         $student->save();
 
-        
+
         return response()->json(['message' => 'Estudiante creado exitosamente'], 200);
     }
 
-    public function createStaff(Request $request){
+    public function createStaff(Request $request)
+    {
         $rules = [
             'email' => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@ipn\.mx$/',
             'name' => 'required|string',
@@ -490,7 +494,7 @@ class UsersController extends Controller
         $staff->academy = $request->academy;
         $staff->staff_type = $request->userType;
         $staff->save();
-        
+
         return response()->json(['message' => 'Profesor creado exitosamente'], 200);
     }
 }

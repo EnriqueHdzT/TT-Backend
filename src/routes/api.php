@@ -61,7 +61,7 @@ Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function
     Route::post('/keepalive', [AuthController::class, 'keepAlive']);
 
     Route::get('/users', [UsersController::class, 'getUsers']);
-    Route::get('/user', [UsersController::class], 'getSelfData');
+    Route::get('/userId', [UsersController::class, 'getSelfId']);
     Route::get('/user/{id}', [UsersController::class, 'getUserData']);
     Route::delete('/user/{id}', [UsersController::class, 'deleteUser']);
     Route::get('/searchUsers', [UsersController::class, 'searchUsers']);
