@@ -57,12 +57,12 @@ Route::get('/correo', function() {
 })->name('api.correo');
 
 // Protected routes
-Route::group(['middleware' => ['auth:sanctum']], function () {
+Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/keepalive', [AuthController::class, 'keepAlive']);
 
     Route::get('/users', [UsersController::class, 'getUsers']);
-    Route::get('/user', [UsersController::class], 'getSelfData');
+    Route::get('/userId', [UsersController::class, 'getSelfId']);
     Route::get('/user/{id}', [UsersController::class, 'getUserData']);
     Route::delete('/user/{id}', [UsersController::class, 'deleteUser']);
     Route::get('/searchUsers', [UsersController::class, 'searchUsers']);
