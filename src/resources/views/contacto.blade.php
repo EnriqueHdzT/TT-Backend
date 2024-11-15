@@ -19,7 +19,7 @@
             overflow: hidden;
         }
         .header {
-            background-color: #3498db;
+            background-color: #4CAF50;
             color: white;
             padding: 20px;
             text-align: center;
@@ -29,17 +29,6 @@
         }
         .content p {
             line-height: 1.6;
-        }
-        .button {
-            display: inline-block;
-            padding: 10px 20px;
-            margin: 20px 0;
-            font-size: 16px;
-            color: white;
-            background-color: #3498db;
-            text-align: center;
-            text-decoration: none;
-            border-radius: 5px;
         }
         .footer {
             background-color: #e9e9e9;
@@ -54,18 +43,16 @@
 <body>
 <div class="container">
     <div class="header">
-        <h1>Recuperación de Contraseña</h1>
+        <h1>Mensaje de Contacto</h1>
     </div>
     <div class="content">
-        <h2>Hola, {{ $user->name }}</h2>
-        <p>Hemos recibido una solicitud para restablecer tu contraseña.</p>
-        <p>Puedes restablecer tu contraseña usando el siguiente enlace:</p>
-        <a href="{{ $resetUrl }}" class="button">Recuperar contraseña</a>
-        <p>Si no has solicitado restablecer tu contraseña, por favor, ignora este correo.</p>
-        <p>Gracias.</p>
+        <p><strong>Nombre:</strong> {{ $name }}</p>
+        <p><strong>Email:</strong> {{ $email }}</p>
+        <p><strong>Mensaje:</strong></p>
+        <p>{{ $messageContent }}</p>
     </div>
     <div class="footer">
-        <p>Este mensaje ha sido enviado desde nuestro sistema de recuperación de contraseñas.</p>
+        <p>Este mensaje ha sido enviado desde el formulario de contacto de nuestro sitio web.</p>
     </div>
 </div>
 </body>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 
+use App\Mail\MensajeDeContacto;
 use App\Mail\RecuperarContrasena;
 use App\Models\User;
 use App\Models\Student;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\BienvenidoVerifMail;
+use function Laravel\Prompts\alert;
 
 class AuthController extends Controller
 {
@@ -186,7 +188,7 @@ class AuthController extends Controller
         $user->save();
 
         // URL de recuperación de contraseña usando el ID del usuario
-        $resetUrl = url('http://localhost:5177/recuperar/'.$user->remember_token);
+        $resetUrl = url('http://localhost:5174/recuperar/'.$user->remember_token);
 
         // Enviar correo electrónico
         Mail::to($user->email)->send(new RecuperarContrasena($user, $resetUrl));
@@ -216,6 +218,30 @@ class AuthController extends Controller
 
 
         return response()->json(['message' => 'Contraseña actualizada exitosamente'], 200);
+    }
+
+    public function recibiremail(Request $request) {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255',
+            'message' => 'required|string'
+        ]);
+
+        $name = $request->input('name');
+        $email = $request->input('email');
+        $message = $request->input('message');
+
+        try {
+            Mail::to('franjav.cast@gmail.com')->send(new MensajeDeContacto($name, $email, $message));
+
+            return response()->json(['message' => 'Correo enviado exitosamente'], 200);
+        } catch (\Exception $e) {
+            if (config('app.debug')) {
+                return response()->json(['message' => 'Error enviando el correo.', 'error' => $e->getMessage()], 500);
+            } else {
+                return response()->json(['message' => 'Error enviando el correo, por favor intente más tarde.'], 500);
+            }
+        }
     }
 
 }
