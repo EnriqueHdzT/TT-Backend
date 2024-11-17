@@ -49,7 +49,7 @@ Route::delete('/addProtocol/{id}', [ProtocolController::class, 'deleteProtocol']
 Route::get('/getProtocolDoc/{id}', [ProtocolController::class, 'getProtocolDoc'])->middleware('auth:sanctum');
 
 // Email routes
-Route::get('/correo', function() {
+Route::get('/correo', function () {
     Mail::to('franjav.cast@gmail.com')
         ->send(new EnvioCorreoMailabre);
     return "Mensaje Enviado";
@@ -67,6 +67,7 @@ Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function
     Route::get('/searchUsers', [UsersController::class, 'searchUsers']);
     Route::post('/createStudent', [UsersController::class, 'createStudent']);
     Route::post('/createStaff', [UsersController::class, 'createStaff']);
+    Route::put('/user', [UsersController::class, 'updateUserData']);
 
     Route::post('/dates', [DatesAndTermsController::class, 'createSchoolCycle']);
     Route::get('/dates', [DatesAndTermsController::class, 'getAllSchoolCycles']);
