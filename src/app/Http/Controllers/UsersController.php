@@ -11,6 +11,7 @@ use App\Models\Student;
 use App\Models\Staff;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Ramsey\Uuid\Uuid;
 
 class UsersController extends Controller
 {
@@ -194,14 +195,14 @@ class UsersController extends Controller
             $user->save();
             // Redirigir a la página principal con un mensaje de éxito
             return redirect('http://localhost:5174/login')->with('message', 'Correo verificado correctamente.');
-
         } else {
             // Redirigir a la página principal con un mensaje de error
             return redirect('/')->with('error', 'Usuario no encontrado.');
         }
     }
 
-    public function getUsers(Request $request) {
+    public function getUsers(Request $request)
+    {
         $rules = [
             'userType' => 'nullable|in:Alumnos,Docentes',
             'precedence' => 'nullable|in:Interino,Externo',
@@ -371,53 +372,56 @@ class UsersController extends Controller
         $user->delete();
         return response()->json(['message' => 'Estudiante eliminado exitosamente'], 200);
     }
-  
-    public function getSelfData()
+
+    public function getSelfId()
     {
         $user = Auth::user();
-        $userData = [];
-
-        if ($user->student) {
-            $userData[] = $user->student;
-            $userData[0]["userType"] = "student";
-        } elseif ($user->staff) {
-            $userData[] = $user->staff;
-            $userData[0]["userType"] = "staff";
+        if (!$user) {
+            return response()->json(['message' => 'No se pudo obtener el ID del usuario'], 404);
         }
-        unset($userData[0]['id']);
-        unset($userData[0]['created_at']);
-        unset($userData[0]['updated_at']);
-
-        $userData[0]['email'] = $user->email;
-
-        return response()->json($userData, 200);
+        return response()->json(['id' => $user->id], 200);
     }
 
     public function getUserData($id)
     {
-        $user = User::where('id', $id)->first();
+        if (!Uuid::isValid($id)) {
+            return response()->json(['message' => 'Usuario no encontrado'], 404);
+        }
+        $user = User::find($id);
         if (!$user) {
             return response()->json(['message' => 'Usuario no encontrado'], 404);
         }
-        $userData = [];
+        
+        $userInfo = [];
+        $privilegedRoles = ['AnaCATT', 'SecEjec', 'SecTec', 'Presidente'];
+        $requestingUser = Auth::user();
 
-        if ($user->student) {
-            $userData[] = $user->student;
-            $userData[0]["userType"] = "student";
-        } elseif ($user->staff) {
-            $userData[] = $user->staff;
-            $userData[0]["userType"] = "staff";
+        if ($requestingUser->staff) {
+            if (in_array($requestingUser->staff->staff_type, $privilegedRoles)) {
+                if ($user->student) {
+                    $userInfo = $user->student->toArray();
+                    $userInfo["userType"] = "student";
+                } elseif ($user->staff) {
+                    $userInfo = $user->staff->toArray();
+                    $userInfo["userType"] = "staff";
+                }
+            } else {
+                $userInfo = $requestingUser->staff->toArray();
+                $userInfo["userType"] = "staff";
+            }
+        } else {
+            $userInfo = $requestingUser->student->toArray();
+            $userInfo["userType"] = "student";
         }
-        unset($userData[0]['id']);
-        unset($userData[0]['created_at']);
-        unset($userData[0]['updated_at']);
 
-        $userData[0]['email'] = $user->email;
+        unset($userInfo['id'], $userInfo['created_at'], $userInfo['updated_at']);
+        $userInfo['email'] = $user->email;
 
-        return response()->json($userData, 200);
+        return response()->json($userInfo, 200);
     }
 
-    public function createStudent(Request $request){
+    public function createStudent(Request $request)
+    {
         $rules = [
             'email' => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@alumno\.ipn\.mx$/',
             'name' => 'required|string',
@@ -452,11 +456,12 @@ class UsersController extends Controller
         $student->curriculum = $request->curriculum;
         $student->save();
 
-        
+
         return response()->json(['message' => 'Estudiante creado exitosamente'], 200);
     }
 
-    public function createStaff(Request $request){
+    public function createStaff(Request $request)
+    {
         $rules = [
             'email' => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@ipn\.mx$/',
             'name' => 'required|string',
@@ -490,7 +495,64 @@ class UsersController extends Controller
         $staff->academy = $request->academy;
         $staff->staff_type = $request->userType;
         $staff->save();
-        
+
         return response()->json(['message' => 'Profesor creado exitosamente'], 200);
+    }
+
+    public function updateUserData(Request $request)
+    {
+        try {
+            $user = User::find($request->id);
+
+            if (!$user) {
+                return response()->json(['message' => 'Usuario no encontrado'], 404);
+            }
+
+            $currentUser = Auth::user();
+            $isAuthorizedStaff = $currentUser->staff
+                && in_array($currentUser->staff->staff_type, [
+                    'SecEjec',
+                    'SecTec',
+                    'Presidente',
+                    'AnaCATT',
+                ]);
+
+            if ($currentUser->id === $user->id || $isAuthorizedStaff) {
+                $user->email = $request->email ?? $user->email;
+                if ($user->staff) {
+                    $staff = $user->staff;
+                    $staff->fill([
+                        'name' => $request->name ?? $staff->name,
+                        'lastname' => $request->lastName ?? $staff->lastname,
+                        'second_lastname' => $request->secondLastName ?? $staff->second_lastname,
+                        'precedence' => $request->precedence ?? $staff->precedence,
+                        'academy' => $request->academy ?? $staff->academy,
+                        'staff_type' => $request->userType ?? $staff->staff_type,
+                        'altern_email' => $request->alternEmail ?? $staff->altern_email,
+                        'phone_number' => $request->phoneNumber ?? $staff->phone_number,
+                    ]);
+                    $staff->save();
+                } else {
+                    $student = $user->student;
+                    $student->fill([
+                        'name' => $request->name ?? $student->name,
+                        'lastname' => $request->lastName ?? $student->lastname,
+                        'second_lastname' => $request->secondLastName ?? $student->second_lastname,
+                        'student_id' => $request->studentId ?? $student->student_id,
+                        'career' => $request->career ?? $student->career,
+                        'curriculum' => $request->curriculum ?? $student->curriculum,
+                        'phone_number' => $request->phoneNumber ?? $student->phone_number,
+                        'altern_email' => $request->alternEmail ?? $student->altern_email,
+                    ]);
+                    $student->save();
+                }
+
+                return response()->json(['message' => 'Datos actualizados exitosamente'], 200);
+            }
+
+            return response()->json(['message' => 'No tienes permiso para actualizar estos datos'], 403);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error al actualizar los datos'], 500);
+        }
     }
 }

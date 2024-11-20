@@ -49,24 +49,25 @@ Route::delete('/addProtocol/{id}', [ProtocolController::class, 'deleteProtocol']
 Route::get('/getProtocolDoc/{id}', [ProtocolController::class, 'getProtocolDoc'])->middleware('auth:sanctum');
 
 // Email routes
-Route::get('/correo', function() {
+Route::get('/correo', function () {
     Mail::to('franjav.cast@gmail.com')
         ->send(new EnvioCorreoMailabre);
     return "Mensaje Enviado";
 })->name('api.correo');
 
 // Protected routes
-Route::group(['middleware' => ['auth:sanctum']], function () {
+Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/keepalive', [AuthController::class, 'keepAlive']);
 
     Route::get('/users', [UsersController::class, 'getUsers']);
-    Route::get('/user', [UsersController::class], 'getSelfData');
+    Route::get('/userId', [UsersController::class, 'getSelfId']);
     Route::get('/user/{id}', [UsersController::class, 'getUserData']);
     Route::delete('/user/{id}', [UsersController::class, 'deleteUser']);
     Route::get('/searchUsers', [UsersController::class, 'searchUsers']);
     Route::post('/createStudent', [UsersController::class, 'createStudent']);
     Route::post('/createStaff', [UsersController::class, 'createStaff']);
+    Route::put('/user', [UsersController::class, 'updateUserData']);
 
     Route::post('/dates', [DatesAndTermsController::class, 'createSchoolCycle']);
     Route::get('/dates', [DatesAndTermsController::class, 'getAllSchoolCycles']);
