@@ -21,6 +21,12 @@ class Protocol extends Model
         'pdf',
     ];
 
+    protected $hidden = [
+        'created_at',
+        'updated_at',
+        'pdf',
+    ];
+
     public function datesAndTerms()
     {
         return $this->belongsTo(DatesAndTerms::class, 'period');

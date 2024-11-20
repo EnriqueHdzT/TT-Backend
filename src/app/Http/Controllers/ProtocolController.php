@@ -287,6 +287,7 @@ class ProtocolController extends Controller
         $cycle = $request->cycle;
         $page = $request->page ?? 1;
         $searchBar = $request->searchBar;
+        $orderBy = $request->orderBy;
 
         if ($isStudent) {
             $protocolsQuery = $user->student->protocols()->whereHas('datesAndTerms', function ($query) use ($cycle) {
@@ -309,6 +310,10 @@ class ProtocolController extends Controller
                 $query->whereRaw('protocol_id ILIKE ?', ['%' . $searchBar . '%'])
                       ->orWhereRaw('title ILIKE ?', ['%' . $searchBar . '%']);
             });
+        }
+
+        if ($orderBy) {
+            $protocolsQuery->orderByRaw("status = ? DESC", [$orderBy]);
         }
 
         $protocols = $protocolsQuery->paginate($elementsPerPage, ['*'], 'page', $page);
