@@ -11,6 +11,7 @@ use App\Models\Student;
 use App\Models\Staff;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Ramsey\Uuid\Uuid;
 
 class UsersController extends Controller
 {
@@ -383,40 +384,40 @@ class UsersController extends Controller
 
     public function getUserData($id)
     {
-        $user = User::where('id', $id)->first();
+        if (!Uuid::isValid($id)) {
+            return response()->json(['message' => 'Usuario no encontrado'], 404);
+        }
+        $user = User::find($id);
         if (!$user) {
             return response()->json(['message' => 'Usuario no encontrado'], 404);
         }
-        $userData = [];
+        
+        $userInfo = [];
+        $privilegedRoles = ['AnaCATT', 'SecEjec', 'SecTec', 'Presidente'];
+        $requestingUser = Auth::user();
 
-        $specialTypes = ['AnaCATT', 'SecEjec', 'SecTec', 'Presidente'];
-        $userAsking = Auth::user();
-
-        if (!$userAsking->staff) {
-            $userData[] = $userAsking->student;
-            $userData[0]["userType"] = "student";
-        } else {
-            if (in_array($userAsking->staff->userType, $specialTypes)) {
+        if ($requestingUser->staff) {
+            if (in_array($requestingUser->staff->staff_type, $privilegedRoles)) {
                 if ($user->student) {
-                    $userData[] = $user->student;
-                    $userData[0]["userType"] = "student";
+                    $userInfo = $user->student->toArray();
+                    $userInfo["userType"] = "student";
                 } elseif ($user->staff) {
-                    $userData[] = $user->staff;
-                    $userData[0]["userType"] = "staff";
+                    $userInfo = $user->staff->toArray();
+                    $userInfo["userType"] = "staff";
                 }
             } else {
-                $userData[] = $userAsking->staff;
-                $userData[0]["userType"] = "staff";
+                $userInfo = $requestingUser->staff->toArray();
+                $userInfo["userType"] = "staff";
             }
+        } else {
+            $userInfo = $requestingUser->student->toArray();
+            $userInfo["userType"] = "student";
         }
 
-        unset($userData[0]['id']);
-        unset($userData[0]['created_at']);
-        unset($userData[0]['updated_at']);
+        unset($userInfo['id'], $userInfo['created_at'], $userInfo['updated_at']);
+        $userInfo['email'] = $user->email;
 
-        $userData[0]['email'] = $user->email;
-
-        return response()->json($userData, 200);
+        return response()->json($userInfo, 200);
     }
 
     public function createStudent(Request $request)
@@ -496,5 +497,62 @@ class UsersController extends Controller
         $staff->save();
 
         return response()->json(['message' => 'Profesor creado exitosamente'], 200);
+    }
+
+    public function updateUserData(Request $request)
+    {
+        try {
+            $user = User::find($request->id);
+
+            if (!$user) {
+                return response()->json(['message' => 'Usuario no encontrado'], 404);
+            }
+
+            $currentUser = Auth::user();
+            $isAuthorizedStaff = $currentUser->staff
+                && in_array($currentUser->staff->staff_type, [
+                    'SecEjec',
+                    'SecTec',
+                    'Presidente',
+                    'AnaCATT',
+                ]);
+
+            if ($currentUser->id === $user->id || $isAuthorizedStaff) {
+                $user->email = $request->email ?? $user->email;
+                if ($user->staff) {
+                    $staff = $user->staff;
+                    $staff->fill([
+                        'name' => $request->name ?? $staff->name,
+                        'lastname' => $request->lastName ?? $staff->lastname,
+                        'second_lastname' => $request->secondLastName ?? $staff->second_lastname,
+                        'precedence' => $request->precedence ?? $staff->precedence,
+                        'academy' => $request->academy ?? $staff->academy,
+                        'staff_type' => $request->userType ?? $staff->staff_type,
+                        'altern_email' => $request->alternEmail ?? $staff->altern_email,
+                        'phone_number' => $request->phoneNumber ?? $staff->phone_number,
+                    ]);
+                    $staff->save();
+                } else {
+                    $student = $user->student;
+                    $student->fill([
+                        'name' => $request->name ?? $student->name,
+                        'lastname' => $request->lastName ?? $student->lastname,
+                        'second_lastname' => $request->secondLastName ?? $student->second_lastname,
+                        'student_id' => $request->studentId ?? $student->student_id,
+                        'career' => $request->career ?? $student->career,
+                        'curriculum' => $request->curriculum ?? $student->curriculum,
+                        'phone_number' => $request->phoneNumber ?? $student->phone_number,
+                        'altern_email' => $request->alternEmail ?? $student->altern_email,
+                    ]);
+                    $student->save();
+                }
+
+                return response()->json(['message' => 'Datos actualizados exitosamente'], 200);
+            }
+
+            return response()->json(['message' => 'No tienes permiso para actualizar estos datos'], 403);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error al actualizar los datos'], 500);
+        }
     }
 }
