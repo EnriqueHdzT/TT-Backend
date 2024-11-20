@@ -44,4 +44,9 @@ class DatesAndTerms extends Model
         'ext_start_second_eval_protocols',
         'ext_end_second_eval_protocols',
     ];
+
+    public function protocols()
+    {
+        return $this->hasMany(Protocol::class, 'period');
+    }
 }

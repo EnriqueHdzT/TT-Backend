@@ -246,8 +246,8 @@ class ProtocolController extends Controller
             return response()->json(['message' => 'Error'], 404);
         }
 
-        //$protocolPath = $protocol_id.'/'.$protocol->pdfname; // descomentar cuando exista la columna
-        $protocolPath = $protocol_id . '/test.pdf';
+        $protocolPath = $protocol_id.'/'.$protocol->pdf; // descomentar cuando exista la columna
+
         $user = Auth::user();
         $isStudent = $user->student()->exists();
         $canAccess = false;
@@ -276,6 +276,48 @@ class ProtocolController extends Controller
             );
         }
 
+    }
+
+    public function listProtocols(Request $request)
+    {
+        $user = Auth::user();
+        $elementsPerPage = 9;
+        $isStudent = $user->student()->exists();
+        $protocolsQuery = null;
+        $cycle = $request->cycle;
+        $page = $request->page ?? 1;
+        $searchBar = $request->searchBar;
+
+        if ($isStudent) {
+            $protocolsQuery = $user->student->protocols()->whereHas('datesAndTerms', function ($query) use ($cycle) {
+                $query->where('cycle', $cycle);
+            });
+        } else {
+            $staff = $user->staff;
+            switch ($staff->staff_type) {
+                case 'AnaCATT':
+                    $protocolsQuery = Protocol::whereHas('datesAndTerms', function ($query) use ($cycle) {
+                        $query->where('cycle', $cycle);
+                    });
+                    break;
+                // Add cases for other staff types
+            }
+        }
+
+        if ($searchBar) {
+            $protocolsQuery->where(function ($query) use ($searchBar) {
+                $query->whereRaw('protocol_id ILIKE ?', ['%' . $searchBar . '%'])
+                      ->orWhereRaw('title ILIKE ?', ['%' . $searchBar . '%']);
+            });
+        }
+
+        $protocols = $protocolsQuery->paginate($elementsPerPage, ['*'], 'page', $page);
+
+        return response()->json([
+            'protocols' => $protocols->items(),
+            'current_page' => $protocols->currentPage(),
+            'total_pages' => $protocols->lastPage(),
+        ], 200);
     }
 
     public function checkIfExists($protocol_id, $protocols){
