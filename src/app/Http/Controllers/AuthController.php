@@ -190,6 +190,7 @@ class AuthController extends Controller
         // URL de recuperación de contraseña usando el ID del usuario
         $resetUrl = url('http://localhost:5174/recuperar/'.$user->remember_token);
 
+
         // Enviar correo electrónico
         Mail::to($user->email)->send(new RecuperarContrasena($user, $resetUrl));
 

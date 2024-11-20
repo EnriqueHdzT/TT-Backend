@@ -15,24 +15,28 @@ return new class extends Migration
         Schema::create('dates_and_terms', function (Blueprint $table) {
             $table->uuid('id')->primary()->default(DB::raw('(uuid_generate_v4())'));
             $table->string('cycle', 6)->unique();
-            $table->boolean('status')->default(true);
+            $table->boolean('status')->default(false);
             $table->dateTime('ord_start_update_protocols')->nullable();
-            $table->dateTime('ord_end__update_protocols')->nullable();
+            $table->dateTime('ord_end_update_protocols')->nullable();
             $table->dateTime('ord_start_sort_protocols')->nullable();
             $table->dateTime('ord_end_sort_protocols')->nullable();
             $table->dateTime('ord_start_eval_protocols')->nullable();
             $table->dateTime('ord_end_eval_protocols')->nullable();
             $table->dateTime('ord_start_change_protocols')->nullable();
             $table->dateTime('ord_end_change_protocols')->nullable();
+            $table->dateTime('ord_start_second_eval_protocols')->nullable();
+            $table->dateTime('ord_end_second_eval_protocols')->nullable();
             
             $table->dateTime('ext_start_update_protocols')->nullable();
-            $table->dateTime('ext_end__update_protocols')->nullable();
+            $table->dateTime('ext_end_update_protocols')->nullable();
             $table->dateTime('ext_start_sort_protocols')->nullable();
             $table->dateTime('ext_end_sort_protocols')->nullable();
             $table->dateTime('ext_start_eval_protocols')->nullable();
             $table->dateTime('ext_end_eval_protocols')->nullable();
             $table->dateTime('ext_start_change_protocols')->nullable();
             $table->dateTime('ext_end_change_protocols')->nullable();
+            $table->dateTime('ext_start_second_eval_protocols')->nullable();
+            $table->dateTime('ext_end_second_eval_protocols')->nullable();
             $table->timestamps();
         });
     }

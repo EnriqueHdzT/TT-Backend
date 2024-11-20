@@ -24,20 +24,29 @@ class DatesAndTerms extends Model
         'cycle',
         'status',
         'ord_start_update_protocols',
-        'ord_end__update_protocols',
+        'ord_end_update_protocols',
         'ord_start_sort_protocols',
         'ord_end_sort_protocols',
         'ord_start_eval_protocols',
         'ord_end_eval_protocols',
         'ord_start_change_protocols',
         'ord_end_change_protocols',
+        'ord_start_second_eval_protocols',
+        'ord_end_second_eval_protocols',
         'ext_start_update_protocols',
-        'ext_end__update_protocols',
+        'ext_end_update_protocols',
         'ext_start_sort_protocols',
         'ext_end_sort_protocols',
         'ext_start_eval_protocols',
         'ext_end_eval_protocols',
         'ext_start_change_protocols',
         'ext_end_change_protocols',
+        'ext_start_second_eval_protocols',
+        'ext_end_second_eval_protocols',
     ];
+
+    public function protocols()
+    {
+        return $this->hasMany(Protocol::class, 'period');
+    }
 }

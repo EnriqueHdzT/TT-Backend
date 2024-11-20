@@ -11,10 +11,18 @@ use App\Models\User;
 use App\Models\Staff;
 use App\Models\Student;
 use App\Models\Protocol;
-
+use App\Services\FileService;
+use Illuminate\Support\Facades\Auth;
 
 class ProtocolController extends Controller
 {
+    protected $fileService;
+
+    public function __construct(FileService $fileService)
+    {
+        $this->fileService = $fileService;
+    }
+
     public function createProtocol(Request $request)
     {
         $request->validate([
@@ -65,7 +73,7 @@ class ProtocolController extends Controller
                 $newUser->save();
                 
                 $newStudent = new Student();
-                $newStudent->user_id = $newUser->id;
+                $newStudent->id = $newUser->id;
                 $newStudent->name = $student['name'];
                 $newStudent->lastname = $student['lastname'];
                 $newStudent->second_lastname = $student['second_lastname'];
@@ -123,7 +131,7 @@ class ProtocolController extends Controller
                 $newUser->save();
                 
                 $newStaff = new Staff();
-                $newStaff->user_id = $newUser->id;
+                $newStaff->id = $newUser->id;
                 $newStaff->name = $director['name'];
                 $newStaff->lastname = $director['lastname'];
                 $newStaff->second_lastname = $director['second_lastname'];
@@ -228,5 +236,96 @@ class ProtocolController extends Controller
 
         $protocol->delete();
         return response()->json(['message' => 'Protocolo eliminado exitosamente'], 200);
+    }
+
+    public function getProtocolDoc(Request $request, $protocol_id)
+    {
+        $protocol = Protocol::where('protocol_id', $protocol_id)->first();
+        
+        if (!$protocol) {
+            return response()->json(['message' => 'Error'], 404);
+        }
+
+        $protocolPath = $protocol_id.'/'.$protocol->pdf; // descomentar cuando exista la columna
+
+        $user = Auth::user();
+        $isStudent = $user->student()->exists();
+        $canAccess = false;
+
+        if($isStudent){
+            $protocols = $user->student->protocols;
+            if($this->checkIfExists($protocol_id, $protocols)){
+                $canAccess = true;
+            }
+        }else{
+            $staff = $user->staff;
+            switch($staff->staff_type){
+                case 'AnaCATT':
+                    $canAccess = true;
+                    break;
+                // poner cases para los demás tipos de staff
+            }
+        }
+
+        if($canAccess){
+            return $this->fileService->getFile($protocolPath);
+        }else{
+            return response()->json(
+                ['message' => 'No tienes permiso para acceder a este recurso'], 
+                403
+            );
+        }
+
+    }
+
+    public function listProtocols(Request $request)
+    {
+        $user = Auth::user();
+        $elementsPerPage = 9;
+        $isStudent = $user->student()->exists();
+        $protocolsQuery = null;
+        $cycle = $request->cycle;
+        $page = $request->page ?? 1;
+        $searchBar = $request->searchBar;
+
+        if ($isStudent) {
+            $protocolsQuery = $user->student->protocols()->whereHas('datesAndTerms', function ($query) use ($cycle) {
+                $query->where('cycle', $cycle);
+            });
+        } else {
+            $staff = $user->staff;
+            switch ($staff->staff_type) {
+                case 'AnaCATT':
+                    $protocolsQuery = Protocol::whereHas('datesAndTerms', function ($query) use ($cycle) {
+                        $query->where('cycle', $cycle);
+                    });
+                    break;
+                // Add cases for other staff types
+            }
+        }
+
+        if ($searchBar) {
+            $protocolsQuery->where(function ($query) use ($searchBar) {
+                $query->whereRaw('protocol_id ILIKE ?', ['%' . $searchBar . '%'])
+                      ->orWhereRaw('title ILIKE ?', ['%' . $searchBar . '%']);
+            });
+        }
+
+        $protocols = $protocolsQuery->paginate($elementsPerPage, ['*'], 'page', $page);
+
+        return response()->json([
+            'protocols' => $protocols->items(),
+            'current_page' => $protocols->currentPage(),
+            'total_pages' => $protocols->lastPage(),
+        ], 200);
+    }
+
+    public function checkIfExists($protocol_id, $protocols){
+        foreach($protocols as $protocol){
+            if($protocol->protocol_id == $protocol_id){
+                return true;
+            }
+        }
+        return false;
     }
 }
