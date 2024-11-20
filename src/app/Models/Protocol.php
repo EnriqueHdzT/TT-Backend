@@ -20,4 +20,9 @@ class Protocol extends Model
         'keywords',
         'pdf',
     ];
+
+    public function datesAndTerms()
+    {
+        return $this->belongsTo(DatesAndTerms::class, 'period');
+    }
 }
