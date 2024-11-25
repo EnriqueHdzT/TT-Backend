@@ -391,7 +391,7 @@ class UsersController extends Controller
         if (!$user) {
             return response()->json(['message' => 'Usuario no encontrado'], 404);
         }
-        
+
         $userInfo = [];
         $privilegedRoles = ['AnaCATT', 'SecEjec', 'SecTec', 'Presidente'];
         $requestingUser = Auth::user();
@@ -554,5 +554,23 @@ class UsersController extends Controller
         } catch (\Exception $e) {
             return response()->json(['message' => 'Error al actualizar los datos'], 500);
         }
+    }
+
+    public function doesUserExists($email)
+    {
+        $user = User::where('email', $email)->first();
+        if ($user) {
+            return response()->json([], 200);
+        }
+        return response()->json(['message' => 'Usuario no encontrado'], 404);
+    }
+
+    public function getSelfEmail()
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['message' => 'No se pudo obtener el correo del usuario'], 404);
+        }
+        return response()->json(['email' => $user->email], 200);
     }
 }
