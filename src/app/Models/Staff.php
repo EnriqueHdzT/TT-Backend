@@ -19,7 +19,6 @@ class Staff extends Model
         'lastname',
         'second_lastname',
         'name',
-        'staff_id',
         'precedence',
         'academy',
         'altern_email',

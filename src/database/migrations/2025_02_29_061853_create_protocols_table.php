@@ -11,7 +11,7 @@ class CreateProtocolsTable extends Migration
     {
         Schema::create('protocols', function (Blueprint $table) {
             $table->uuid('id')->primary()->default(DB::raw('(uuid_generate_v4())'));
-            $table->string('protocol_id', 10);
+            $table->string('protocol_id', 10)->unique();
             $table->string('title');
             $table->text('resume');
             $table->uuid('period')->index();

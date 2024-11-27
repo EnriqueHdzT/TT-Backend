@@ -40,7 +40,6 @@ Route::put('/addStaff/{id}', [StaffController::class, 'updateStaff']);
 Route::delete('/addStaff/{id}', [StaffController::class, 'deleteStaff']);
 
 // Protocol routes
-Route::post('/addProtocol', [ProtocolController::class, 'createProtocol']);
 Route::get('/addProtocol/{id}', [ProtocolController::class, 'readProtocol']);
 Route::get('/addProtocol', [ProtocolController::class, 'readProtocols']);
 Route::put('/addProtocol/{id}', [ProtocolController::class, 'updateProtocol']);
@@ -77,6 +76,8 @@ Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function
     Route::put('/date', [DatesAndTermsController::class, 'updateSchoolCycle']);
     Route::delete('/date', [DatesAndTermsController::class, 'deleteSchoolCycle']);
     Route::get('/checkUpload', [DatesAndTermsController::class, 'checkIfUploadIsAvailable']);
+
+    Route::post('/createProtocol', [ProtocolController::class, 'createProtocol']);
 });
 
 // Verificar Email
