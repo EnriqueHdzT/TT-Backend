@@ -8,7 +8,6 @@ use App\Http\Controllers\ProtocolController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\DatesAndTermsController;
 use App\Mail\EnvioCorreoMailabre;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -69,6 +68,8 @@ Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function
     Route::post('/createStudent', [UsersController::class, 'createStudent']);
     Route::post('/createStaff', [UsersController::class, 'createStaff']);
     Route::put('/user', [UsersController::class, 'updateUserData']);
+    Route::get('/userExists/{email}', [UsersController::class, 'doesUserExists']);
+    Route::get('/selfEmail', [UsersController::class, 'getSelfEmail']);
 
     Route::post('/dates', [DatesAndTermsController::class, 'createSchoolCycle']);
     Route::get('/dates', [DatesAndTermsController::class, 'getAllSchoolCycles']);
