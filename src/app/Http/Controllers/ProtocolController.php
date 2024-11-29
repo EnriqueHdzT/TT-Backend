@@ -149,8 +149,7 @@ class ProtocolController extends Controller
         $protocol->fill([
             'title' => $request->input('title'),
             'resume' => $request->input('resume'),
-            'keywords' => json_encode($request->input('keywords')),
-            'pdf' => $request->file('pdf')?->store('protocols'),
+            'keywords' => json_encode($request->input('keywords'))
         ]);
 
         $datesAndTerms = DatesAndTerms::where('cycle', $request->input('term'))->firstOrFail();
@@ -165,7 +164,14 @@ class ProtocolController extends Controller
             ->where('protocol_id', 'like', "{$prefix}%")
             ->count();
 
-        $protocol->protocol_id = sprintf('%s%03d', $prefix, $maxNumber + 1);
+        $protocol_id = sprintf('%s%03d', $prefix, $maxNumber + 1);
+        $pdf = $request->file('pdf');
+        if ($pdf) {
+            $protocol->fill([
+                'pdf' => $pdf->store("uploads/{$protocol_id}/"),
+                'protocol_id' => $protocol_id
+            ]);
+        }
         $protocol->save();
 
         foreach ($studentIds as $studentId) {
