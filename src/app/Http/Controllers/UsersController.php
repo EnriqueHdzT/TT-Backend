@@ -194,7 +194,7 @@ class UsersController extends Controller
             $user->email_is_verified = true;
             $user->save();
             // Redirigir a la página principal con un mensaje de éxito
-            return redirect('http://localhost:5174/login')->with('message', 'Correo verificado correctamente.');
+            return redirect('http://localhost:5173/login')->with('message', 'Correo verificado correctamente.');
         } else {
             // Redirigir a la página principal con un mensaje de error
             return redirect('/')->with('error', 'Usuario no encontrado.');
