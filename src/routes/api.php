@@ -6,6 +6,7 @@ use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\ProtocolController;
 use App\Http\Controllers\UsersController;
+use App\Http\Controllers\PublicacionesController;
 use App\Http\Controllers\DatesAndTermsController;
 use App\Mail\EnvioCorreoMailabre;
 use Illuminate\Http\Request;
@@ -84,4 +85,26 @@ Route::get('/verify-email/{id}', [UsersController::class, 'VerifyMail']);
 Route::post('/recuperar-password', [AuthController::class, 'recuperarPassword']);
 Route::post('/reset-password/{token}', [AuthController::class, 'resetPassword']);
 //Recibir correo
-Route::post('/ayuda', [AuthController::class, 'recibiremail']);
+Route::post('/buzon', [AuthController::class, 'recibiremail']);
+
+//Ruta del principla publicaciones
+Route::post('/avisocrear', [PublicacionesController::class, 'setAvisos']);
+Route::get('/aviso', [PublicacionesController::class, 'getAviso']);
+Route::get('/aviso/{id}', [PublicacionesController::class, 'getAvisoID']);
+Route::put('/aviso/{id}', [PublicacionesController::class, 'updateAviso']);
+Route::delete('/aviso/{id}', [PublicacionesController::class, 'deleteAviso']);
+
+Route::post('/tipcrear', [PublicacionesController::class, 'setTip']);
+Route::get('/tip', [PublicacionesController::class, 'getTip']);
+Route::get('/tip/{id}', [PublicacionesController::class, 'getTipID']);;
+Route::put('/tip/{id}', [PublicacionesController::class, 'updateTip']);
+Route::delete('/tip/{id}', [PublicacionesController::class, 'deleteTip']);
+
+Route::post('/preguntacrear', [PublicacionesController::class, 'setPregunta']);
+Route::get('/pregunta', [PublicacionesController::class, 'getPreguntas']);
+Route::get('/pregunta/{id}', [PublicacionesController::class, 'getPreguntaID']);
+Route::put('/pregunta/{id}', [PublicacionesController::class, 'updatePregunta']);
+Route::delete('/pregunta/{id}', [PublicacionesController::class, 'deletePregunta']);
+
+
+
