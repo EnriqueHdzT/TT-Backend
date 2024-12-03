@@ -18,7 +18,6 @@ return new class extends Migration
             $table->string('second_lastname')->nullable();
             $table->string('name');
             $table->string('precedence');
-            $table->string('academy')->nullable();
             $table->string('altern_email')->nullable();
             $table->string('phone_number', 15)->nullable();
             $table->enum('staff_type', ['Prof', 'PresAcad', 'JefeDepAcad', 'AnaCATT', 'SecEjec', 'SecTec', 'Presidente'])->default('Prof');

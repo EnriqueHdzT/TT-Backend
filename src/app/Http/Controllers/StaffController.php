@@ -3,15 +3,16 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Str;
 
 use App\Models\User;
 use App\Models\Staff;
+use App\Models\Academy;
 
 class StaffController extends Controller
 {
-    public function createStaff(Request $request){
+    public function createStaff(Request $request)
+    {
         $request->validate([
             'first_lastName' => 'required|string',
             'second_lastName' => 'required|string',
@@ -104,10 +105,11 @@ class StaffController extends Controller
         return response()->json(['message' => 'Datos del profesor actualizados exitosamente'], 200);
     }
 
-    public function deleteStaff($id) {
+    public function deleteStaff($id)
+    {
         $staff = Staff::find($id);
 
-        if (!$staff) {    
+        if (!$staff) {
             return response()->json(['message' => 'Profesor no encontrado'], 404);
         }
 
