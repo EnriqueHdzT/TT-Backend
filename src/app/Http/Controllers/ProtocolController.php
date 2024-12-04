@@ -17,7 +17,6 @@ use App\Models\Protocol;
 use App\Models\ProtocolRole;
 use App\Services\FileService;
 use Illuminate\Support\Facades\Auth;
-use Psy\Readline\Hoa\Console;
 
 class ProtocolController extends Controller
 {

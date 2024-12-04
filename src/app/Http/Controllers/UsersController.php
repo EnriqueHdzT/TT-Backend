@@ -560,7 +560,19 @@ class UsersController extends Controller
     {
         $user = User::where('email', $email)->first();
         if ($user) {
-            return response()->json([], 200);
+            $name = "";
+            $lastName = "";
+            $secondLastName = "";
+            if ($user->staff) {
+                $name = $user->staff->name;
+                $lastName = $user->staff->lastname;
+                $secondLastName = $user->staff->second_lastname;
+            } else if ($user->student) {
+                $name = $user->student->name;
+                $lastName = $user->student->lastname;
+                $secondLastName = $user->student->second_lastname;
+            }
+            return response()->json(["name" => $name, "lastName" => $lastName, "secondLastName" => $secondLastName], 200);
         }
         return response()->json(['message' => 'Usuario no encontrado'], 404);
     }

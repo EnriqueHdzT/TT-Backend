@@ -38,6 +38,12 @@ class Staff extends Model
             ->whereIn('role', ['director', 'sinodal']);
     }
 
+    public function academies()
+    {
+        return $this->belongsToMany(Academy::class, 'staff_academy');
+    }
+
+
     protected static function boot()
     {
         parent::boot();
