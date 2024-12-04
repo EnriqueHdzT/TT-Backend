@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Staff extends Model
 {
@@ -18,7 +19,6 @@ class Staff extends Model
         'lastname',
         'second_lastname',
         'name',
-        'staff_id',
         'precedence',
         'academy',
         'altern_email',
@@ -32,31 +32,32 @@ class Staff extends Model
         return $this->belongsTo(User::class, 'id', 'id');
     }
 
-    public function directors()
+    public function protocolRoles()
     {
-        return $this->hasMany(Protocol::class, 'director1_id')->orWhere('director2_id', $this->id);
+        return $this->hasMany(ProtocolRole::class, 'user_id')
+            ->whereIn('role', ['director', 'sinodal']);
     }
 
-    public function sinodales()
+    public function academies()
     {
-        return $this->hasMany(Protocol::class, 'sinodal1_id')->orWhere('sinodal2_id', $this->id)->orWhere('sinodal3_id', $this->id);
+        return $this->belongsToMany(Academy::class, 'staff_academy');
     }
+
 
     protected static function boot()
     {
         parent::boot();
 
         static::deleting(function ($staff) {
-            DB::table('protocols')->where('director1_id', $staff->id)
-                ->update(['director1_data' => json_encode($staff->toArray())]);
-            DB::table('protocols')->where('director2_id', $staff->id)
-                ->update(['director2_data' => json_encode($staff->toArray())]);
-            DB::table('protocols')->where('sinodal1_id', $staff->id)
-                ->update(['sinodal1_data' => json_encode($staff->toArray())]);
-            DB::table('protocols')->where('sinodal2_id', $staff->id)
-                ->update(['sinodal2_data' => json_encode($staff->toArray())]);
-            DB::table('protocols')->where('sinodal3_id', $staff->id)
-                ->update(['sinodal3_data' => json_encode($staff->toArray())]);
+            $staff->load('user');
+            $backupData = array_merge(
+                $staff->toArray(),
+                ['email' => $staff->user?->email]
+            );
+            DB::table('protocol_roles')
+                ->where('person_id', $staff->id)
+                ->whereIn('role', ['director', 'sinodal'])
+                ->update(['person_data_backup' => json_encode($backupData)]);
 
             $staff->user()->delete();
         });

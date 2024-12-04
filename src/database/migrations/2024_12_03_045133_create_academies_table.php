@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -11,8 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('protocols', function (Blueprint $table) {
-            $table->string('pdf')->nullable()->change();
+        Schema::create('academies', function (Blueprint $table) {
+            $table->uuid('id')->primary()->default(DB::raw('(uuid_generate_v4())'));
+            $table->string('name')->unique();
+            $table->timestamps();
         });
     }
 
@@ -21,7 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Use raw SQL to change the column back to bytea with casting
-        DB::statement('ALTER TABLE protocols ALTER COLUMN pdf TYPE bytea USING pdf::bytea');
+        Schema::dropIfExists('academies');
     }
 };

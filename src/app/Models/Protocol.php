@@ -16,8 +16,16 @@ class Protocol extends Model
     protected $fillable = [
         'protocol_id',
         'title',
+        'resume',
+        'period',
         'status',
         'keywords',
+        'pdf',
+    ];
+
+    protected $hidden = [
+        'created_at',
+        'updated_at',
         'pdf',
     ];
 
