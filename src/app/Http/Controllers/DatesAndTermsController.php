@@ -121,6 +121,24 @@ class DatesAndTermsController extends Controller
         }
     }
 
+    public function getAllSchoolCyclesAsArray()
+    {
+        try {
+            $schoolCycles = DatesAndTerms::orderByRaw("CAST(split_part(cycle, '/', 1) AS INTEGER) DESC")
+                ->orderByRaw("CAST(split_part(cycle, '/', 2) AS INTEGER) DESC")
+                ->pluck('cycle')
+                ->toArray();
+
+            if (empty($schoolCycles)) {
+                return response()->json([], 404);
+            }
+
+            return response()->json($schoolCycles, 200, [], JSON_UNESCAPED_SLASHES);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error en el servidor'], 500);
+        }
+    }
+
     public function deleteSchoolCycle(Request $request)
     {
         try {

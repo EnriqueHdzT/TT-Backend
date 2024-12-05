@@ -316,10 +316,10 @@ class ProtocolController extends Controller
             return response()->json(['message' => 'Error'], 404);
         }
 
-        $protocolPath = $protocol_id . '/' . $protocol->pdf; // descomentar cuando exista la columna
+        $protocolPath = $protocol->pdf; // descomentar cuando exista la columna
 
         $user = Auth::user();
-        $isStudent = $user->student->exists();
+        $isStudent = $user->student;
         $canAccess = false;
 
         if ($isStudent) {
@@ -330,10 +330,21 @@ class ProtocolController extends Controller
         } else {
             $staff = $user->staff;
             switch ($staff->staff_type) {
+                case 'PresAcad': 
+                case 'JefeDepAcad': 
+                case 'SecEjec': 
+                case 'SecTec': 
+                case 'Presidente':
                 case 'AnaCATT':
                     $canAccess = true;
                     break;
-                    // poner cases para los demás tipos de staff
+                
+                case 'Prof': 
+                    $protocols = $staff->protocols;
+                    if ($this->checkIfExists($protocol_id, $protocols)) {
+                        $canAccess = true;
+                    }
+                    break;
             }
         }
 
@@ -351,7 +362,7 @@ class ProtocolController extends Controller
     {
         $user = Auth::user();
         $elementsPerPage = 9;
-        $isStudent = $user->student->exists();
+        $isStudent = $user->student;
         $protocolsQuery = null;
         $cycle = $request->cycle;
         $page = $request->page ?? 1;
@@ -359,16 +370,37 @@ class ProtocolController extends Controller
         $orderBy = $request->orderBy;
 
         if ($isStudent) {
-            $protocolsQuery = $user->student->protocols()->whereHas('datesAndTerms', function ($query) use ($cycle) {
-                $query->where('cycle', $cycle);
-            });
+            $protocolsQuery = $user->student->protocols();
+            if ($cycle && $cycle != 'Todos') {
+                $protocolsQuery->whereHas('datesAndTerms', function ($query) use ($cycle) {
+                    $query->where('cycle', $cycle);
+                });
+            }
         } else {
             $staff = $user->staff;
             switch ($staff->staff_type) {
+                case 'PresAcad': 
+                case 'JefeDepAcad': 
+                case 'SecEjec': 
+                case 'SecTec': 
+                case 'Presidente':
                 case 'AnaCATT':
-                    $protocolsQuery = Protocol::whereHas('datesAndTerms', function ($query) use ($cycle) {
-                        $query->where('cycle', $cycle);
-                    });
+                case 'AnaCATT':
+                    $protocolsQuery = Protocol::query();
+                    if ($cycle && $cycle != 'Todos') {
+                        $protocolsQuery->whereHas('datesAndTerms', function ($query) use ($cycle) {
+                            $query->where('cycle', $cycle);
+                        });
+                    }
+                    break;
+
+                case 'Prof':
+                    $protocolsQuery = $staff->protocols();
+                    if ($cycle && $cycle != 'Todos') {
+                        $protocolsQuery->whereHas('datesAndTerms', function ($query) use ($cycle) {
+                            $query->where('cycle', $cycle);
+                        });
+                    }
                     break;
             }
         }

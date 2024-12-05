@@ -53,6 +53,7 @@ Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function
     // Dates routes
     Route::post('/dates', [DatesAndTermsController::class, 'createSchoolCycle']);
     Route::get('/dates', [DatesAndTermsController::class, 'getAllSchoolCycles']);
+    Route::get('/datesList', [DatesAndTermsController::class, 'getAllSchoolCyclesAsArray']);
     Route::get('/date', [DatesAndTermsController::class, 'getSchoolCycleData']);
     Route::put('/date', [DatesAndTermsController::class, 'updateSchoolCycle']);
     Route::delete('/date', [DatesAndTermsController::class, 'deleteSchoolCycle']);

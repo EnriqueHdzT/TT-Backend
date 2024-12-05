@@ -38,6 +38,18 @@ class Staff extends Model
             ->whereIn('role', ['director', 'sinodal']);
     }
 
+    public function protocols()
+    {
+        return $this->hasManyThrough(
+            Protocol::class,
+            ProtocolRole::class,
+            'user_id', // Foreign key on ProtocolRole table
+            'id', // Foreign key on Protocol table
+            'id', // Local key on Staff table
+            'protocol_id' // Local key on ProtocolRole table
+        );
+    }
+
     public function academies()
     {
         return $this->belongsToMany(Academy::class, 'staff_academy');

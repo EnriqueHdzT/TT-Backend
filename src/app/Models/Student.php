@@ -38,6 +38,11 @@ class Student extends Model
             ->where('role', 'student');
     }
 
+    public function protocols()
+    {
+        return $this->belongsToMany(Protocol::class, 'protocol_roles', 'user_id', 'protocol_id');
+    }
+
     protected static function boot()
     {
         parent::boot();
