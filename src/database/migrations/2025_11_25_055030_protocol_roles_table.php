@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('protocol_roles', function (Blueprint $table) {
             $table->id();
             $table->uuid('protocol_id')->index();
-            $table->uuid('user_id')->index();
+            $table->uuid('user_id')->index()->nullable();
             $table->enum('role', ['student', 'director', 'sinodal']);
             $table->json('person_data_backup')->nullable();
             $table->timestamps();
