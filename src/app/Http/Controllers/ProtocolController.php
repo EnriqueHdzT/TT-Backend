@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Academy;
 use App\Models\DatesAndTerms;
 use Illuminate\Http\Request;
 use Exception;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 
 use App\Models\User;
@@ -54,7 +54,7 @@ class ProtocolController extends Controller
             ];
 
             $user = Auth::user();
-            $isStudent = $user->student->exists();
+            $isStudent = $user->student?->exists();
 
             $staffType = $user->staff->staff_type;
             if ($isStudent) {
@@ -145,58 +145,72 @@ class ProtocolController extends Controller
 
     private function createProtocolRecord($request, $studentIds, $directorIds, $sinodalIds)
     {
-        $protocol = new Protocol();
-        $protocol->fill([
-            'title' => $request->input('title'),
-            'resume' => $request->input('resume'),
-            'keywords' => json_encode($request->input('keywords'))
-        ]);
-
-        $datesAndTerms = DatesAndTerms::where('cycle', $request->input('term'))->firstOrFail();
-        $protocol->period = $datesAndTerms->id;
-
-        [$year, $term] = explode('/', $datesAndTerms->cycle);
-        $year = (int)$year;
-        $letter = $term == '1' ? 'B' : ($year++ && 'A');
-
-        $prefix = "{$year}-{$letter}";
-        $maxNumber = Protocol::where('period', $datesAndTerms->id)
-            ->where('protocol_id', 'like', "{$prefix}%")
-            ->count();
-
-        $protocol_id = sprintf('%s%03d', $prefix, $maxNumber + 1);
-        $pdf = $request->file('pdf');
-        if ($pdf) {
+        DB::beginTransaction();
+        try {
+            $protocol = new Protocol();
             $protocol->fill([
-                'pdf' => $pdf->store("uploads/{$protocol_id}/"),
-                'protocol_id' => $protocol_id
+                'title' => $request->input('title'),
+                'resume' => $request->input('resume'),
+                'keywords' => json_encode($request->input('keywords'))
             ]);
-        }
-        $protocol->save();
 
-        foreach ($studentIds as $studentId) {
-            $newProtocolRole = new ProtocolRole();
-            $newProtocolRole->protocol_id = $protocol->id;
-            $newProtocolRole->user_id = $studentId;
-            $newProtocolRole->role = 'student';
-            $newProtocolRole->save();
-        }
-        foreach ($directorIds as $directorId) {
-            $newProtocolRole = new ProtocolRole();
-            $newProtocolRole->protocol_id = $protocol->id;
-            $newProtocolRole->user_id = $directorId;
-            $newProtocolRole->role = 'director';
-            $newProtocolRole->save();
-        }
-        foreach ($sinodalIds as $sinodalId) {
-            $newProtocolRole = new ProtocolRole();
-            $newProtocolRole->protocol_id = $protocol->id;
-            $newProtocolRole->user_id = $sinodalId;
-            $newProtocolRole->role = 'sinodal';
-            $newProtocolRole->save();
-        }
+            $datesAndTerms = DatesAndTerms::where('cycle', $request->input('term'))->firstOrFail();
+            $protocol->period = $datesAndTerms->id;
 
-        return $protocol;
+            [$year, $term] = explode('/', $datesAndTerms->cycle);
+            $year = (int)$year;
+            $letter = ($term == '1') ? 'B' : ($year++ && 'A');
+
+            $prefix = "{$year}-{$letter}";
+            $maxProtocol  = Protocol::where('period', $datesAndTerms->id)
+                ->where('protocol_id', 'like', "{$prefix}%")
+                ->lockForUpdate()
+                ->orderBy('protocol_id', 'desc')
+                ->first();
+
+            $nextNumber = $maxProtocol
+                ? (int)substr($maxProtocol->protocol_id, strlen($prefix)) + 1
+                : 1;
+
+            $protocol_id = sprintf('%s%03d', $prefix, $nextNumber);
+            $pdf = $request->file('pdf');
+            if ($pdf) {
+                $protocol->fill([
+                    'pdf' => $pdf->store("uploads/{$protocol_id}"),
+                    'protocol_id' => $protocol_id
+                ]);
+            }
+            $protocol->save();
+
+            foreach ($studentIds as $studentId) {
+                $newProtocolRole = new ProtocolRole();
+                $newProtocolRole->protocol_id = $protocol->id;
+                $newProtocolRole->user_id = $studentId;
+                $newProtocolRole->role = 'student';
+                $newProtocolRole->save();
+            }
+            foreach ($directorIds as $directorId) {
+                $newProtocolRole = new ProtocolRole();
+                $newProtocolRole->protocol_id = $protocol->id;
+                $newProtocolRole->user_id = $directorId;
+                $newProtocolRole->role = 'director';
+                $newProtocolRole->save();
+            }
+            foreach ($sinodalIds as $sinodalId) {
+                $newProtocolRole = new ProtocolRole();
+                $newProtocolRole->protocol_id = $protocol->id;
+                $newProtocolRole->user_id = $sinodalId;
+                $newProtocolRole->role = 'sinodal';
+                $newProtocolRole->save();
+            }
+
+            DB::commit();
+
+            return $protocol;
+        } catch (Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 
     private function createStudent($student)
@@ -224,17 +238,6 @@ class ProtocolController extends Controller
             'staff_type' => 'Prof',
             'precedence' => $director['precedence'] ?? null,
         ]);
-        foreach ($director['academies'] as $academy) {
-            if (Academy::where('name', $academy)->exists()) {
-                $staff->academies()->attach(Academy::where('name', $academy)->first()->id);
-                continue;
-            } else {
-                $newAcademy = Academy::create([
-                    'name' => $academy,
-                ]);
-                $staff->academies()->attach($newAcademy->id);
-            }
-        }
         $staff->save();
         return $staff;
     }
