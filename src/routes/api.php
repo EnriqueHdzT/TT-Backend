@@ -1,6 +1,6 @@
 <?php
 
-
+use App\Http\Controllers\AcademyController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProtocolController;
 use App\Http\Controllers\UsersController;
@@ -37,7 +37,6 @@ Route::delete('/addProtocol/{id}', [ProtocolController::class, 'deleteProtocol']
 Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function () {
     // Auth routes
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::post('/keepalive', [AuthController::class, 'keepAlive']);
 
     // User routes
     Route::get('/users', [UsersController::class, 'getUsers']);
@@ -64,6 +63,8 @@ Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function
     Route::get('/getProtocolDoc/{id}', [ProtocolController::class, 'getProtocolDoc']);
     Route::get('/listProtocols', [ProtocolController::class, 'listProtocols']);
 
+    // Academy routes
+    Route::get('/academies', [AcademyController::class, 'getAllAcademies']);
 });
 
 // Verificar Email

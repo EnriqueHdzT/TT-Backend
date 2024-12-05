@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Academy;
 use App\Models\DatesAndTerms;
 use Illuminate\Http\Request;
 use Exception;
@@ -53,7 +54,7 @@ class ProtocolController extends Controller
             ];
 
             $user = Auth::user();
-            $isStudent = $user->student()->exists();
+            $isStudent = $user->student->exists();
 
             $staffType = $user->staff->staff_type;
             if ($isStudent) {
@@ -215,15 +216,27 @@ class ProtocolController extends Controller
     private function createDirector($director)
     {
         $user = User::create(['email' => $director['email'], 'password' => Hash::make(Str::random(12))]);
-        return Staff::create([
+        $staff = Staff::create([
             'id' => $user->id,
             'name' => $director['name'] ?? null,
             'lastname' => $director['lastname'] ?? null,
             'second_lastname' => $director['second_lastname'] ?? null,
             'staff_type' => 'Prof',
             'precedence' => $director['precedence'] ?? null,
-            'academy' => $director['academy'] ?? null,
         ]);
+        foreach ($director['academies'] as $academy) {
+            if (Academy::where('name', $academy)->exists()) {
+                $staff->academies()->attach(Academy::where('name', $academy)->first()->id);
+                continue;
+            } else {
+                $newAcademy = Academy::create([
+                    'name' => $academy,
+                ]);
+                $staff->academies()->attach($newAcademy->id);
+            }
+        }
+        $staff->save();
+        return $staff;
     }
 
 
@@ -306,7 +319,7 @@ class ProtocolController extends Controller
         $protocolPath = $protocol_id . '/' . $protocol->pdf; // descomentar cuando exista la columna
 
         $user = Auth::user();
-        $isStudent = $user->student()->exists();
+        $isStudent = $user->student->exists();
         $canAccess = false;
 
         if ($isStudent) {
@@ -338,7 +351,7 @@ class ProtocolController extends Controller
     {
         $user = Auth::user();
         $elementsPerPage = 9;
-        $isStudent = $user->student()->exists();
+        $isStudent = $user->student->exists();
         $protocolsQuery = null;
         $cycle = $request->cycle;
         $page = $request->page ?? 1;
