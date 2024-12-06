@@ -52,14 +52,14 @@ class ProtocolController extends Controller
                 'keywords' => 'required|array|min:1|max:4',
                 'pdf' => 'required|file|mimes:pdf|max:6144',
             ];
-
+            
             $user = Auth::user();
-            $isStudent = $user->student?->exists();
+            $isStudent = $user->student;
 
-            $staffType = $user->staff->staff_type;
             if ($isStudent) {
                 unset($rules['sinodals'], $rules['term']);
-            } elseif (!in_array($staffType, ['AnaCATT', 'SecEjec', 'SecTec', 'Presidente'])) {
+                $request->replace($request->except(['term'])); // Quitar para evitar inyección de 'term' en el request
+            } elseif (!in_array($user->staff->staff_type, ['AnaCATT', 'SecEjec', 'SecTec', 'Presidente'])) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
@@ -74,10 +74,8 @@ class ProtocolController extends Controller
             $directors = $this->processDirectors($request->input('directors'));
             $sinodals = $isStudent ? [] : $this->processSinodals($request->input('sinodals'));
 
-
             // Create protocol
-            $protocol = $this->createProtocolRecord($request, $students['ids'], $directors['ids'], $sinodals['ids']);
-
+            $protocol = $this->createProtocolRecord($request, $students['ids'], $directors['ids'], $sinodals['ids'] ?? []);
 
             return response()->json(['message' => 'Protocol created successfully.', 'protocol' => $protocol], 201);
         } catch (Exception $e) {
@@ -154,7 +152,11 @@ class ProtocolController extends Controller
                 'keywords' => json_encode($request->input('keywords'))
             ]);
 
-            $datesAndTerms = DatesAndTerms::where('cycle', $request->input('term'))->firstOrFail();
+            $requestTerm = $request->input('term');
+            if(!$requestTerm)
+                $requestTerm = DatesAndTerms::latestCycle();
+
+            $datesAndTerms = DatesAndTerms::where('cycle', $requestTerm)->firstOrFail();
             $protocol->period = $datesAndTerms->id;
 
             [$year, $term] = explode('/', $datesAndTerms->cycle);
