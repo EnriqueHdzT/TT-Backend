@@ -8,6 +8,7 @@ use App\Http\Controllers\PublicacionesController;
 use App\Http\Controllers\DatesAndTermsController;
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\MonitoreoController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -95,5 +96,7 @@ Route::get('/pregunta/{id}', [PublicacionesController::class, 'getPreguntaID']);
 Route::put('/pregunta/{id}', [PublicacionesController::class, 'updatePregunta']);
 Route::delete('/pregunta/{id}', [PublicacionesController::class, 'deletePregunta']);
 
+Route::get('/monitoreo/{id}', [MonitoreoController::class, 'getMonitoreo']);
 
-
+Route::post('/subir-imagen', [PublicacionesController::class, 'subirImagen']);
+Route::get('/ver-carpeta-drive', [PublicacionesController::class, 'verCarpetaDrive']);
