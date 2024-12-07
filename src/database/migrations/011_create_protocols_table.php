@@ -5,9 +5,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
-class CreateProtocolsTable extends Migration
+return new class extends Migration
 {
-    public function up()
+    public function up(): void
     {
         Schema::create('protocols', function (Blueprint $table) {
             $table->uuid('id')->primary()->default(DB::raw('(uuid_generate_v4())'));
@@ -15,7 +15,7 @@ class CreateProtocolsTable extends Migration
             $table->string('title');
             $table->text('resume');
             $table->uuid('period')->index();
-            $table->enum('status', ['waiting', 'validated', 'classified', 'evaluated', 'active', 'canceled'])->default('waiting');
+            $table->enum('current_status', ['validating', 'classifying', 'selecting', 'evaluatingFirst', 'correcting', 'evaluatingSecond', 'active', 'canceled'])->default('validating');
             $table->json('keywords')->nullable();
             $table->string('pdf');
             $table->timestamps();
@@ -29,4 +29,4 @@ class CreateProtocolsTable extends Migration
     {
         Schema::dropIfExists('protocols');
     }
-}
+};
