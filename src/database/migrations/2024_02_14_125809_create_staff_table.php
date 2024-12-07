@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('precedence');
             $table->string('altern_email')->nullable();
             $table->string('phone_number', 15)->nullable();
-            $table->enum('staff_type', ['Prof', 'PresAcad', 'JefeDepAcad', 'AnaCATT', 'SecEjec', 'SecTec', 'Presidente'])->default('Prof');
+            $table->enum('staff_type', ['Prof', 'AnaCATT', 'SecEjec', 'SecTec', 'Presidente'])->default('Prof');
             $table->timestamps();
 
             $table->foreign('id')->references('id')->on('users')->onDelete('cascade');

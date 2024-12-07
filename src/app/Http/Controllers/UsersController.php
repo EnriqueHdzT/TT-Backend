@@ -508,7 +508,7 @@ class UsersController extends Controller
             'precedence' => 'required|string',
             'academy' => 'array|min:1',
             'academy.*' => 'string',
-            'userType' => 'required|in:Prof,PresAcad,JefeDepAcad,AnaCATT,SecEjec,SecTec,Presidente',
+            'userType' => 'required|in:Prof,AnaCATT,SecEjec,SecTec,Presidente',
         ]);
 
         // Check if the user already exists
