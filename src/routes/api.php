@@ -74,6 +74,8 @@ Route::get('/verify-email/{id}', [UsersController::class, 'VerifyMail']);
 //Recuperar Contraseña
 Route::post('/recuperar-password', [AuthController::class, 'recuperarPassword']);
 Route::post('/reset-password/{token}', [AuthController::class, 'resetPassword']);
+Route::post('/reset-id/{id}', [AuthController::class, 'resetPasswordID']);
+
 //Recibir correo
 Route::post('/buzon', [AuthController::class, 'recibiremail']);
 
