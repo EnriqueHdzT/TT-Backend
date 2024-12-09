@@ -11,16 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('evaluations', function (Blueprint $table) {
+        Schema::create('protocol_academy', function (Blueprint $table) {
             $table->id();
             $table->uuid('protocol_id')->index();
-            $table->uuid('sinodal_id')->index();
-            $table->enum('current_status', ['pending', 'approved', 'rejected'])->default('pending');
-            $table->json('evaluation_response')->default('{}');
+            $table->uuid('academy_id')->index();
             $table->timestamps();
 
             $table->foreign('protocol_id')->references('id')->on('protocols')->onDelete('cascade');
-            $table->foreign('sinodal_id')->references('id')->on('users')->onDelete('no action');
+            $table->foreign('academy_id')->references('id')->on('academies')->onDelete('cascade');
         });
     }
 
@@ -29,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('evaluations');
+        Schema::dropIfExists('protocol_academy');
     }
 };

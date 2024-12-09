@@ -15,7 +15,6 @@ return new class extends Migration
             $table->string('title');
             $table->text('resume');
             $table->uuid('period')->index();
-            $table->enum('current_status', ['validating', 'classifying', 'selecting', 'evaluatingFirst', 'correcting', 'evaluatingSecond', 'active', 'canceled'])->default('validating');
             $table->json('keywords')->nullable();
             $table->string('pdf');
             $table->timestamps();
