@@ -17,6 +17,20 @@ return new class extends Migration
             $table->string('name')->unique();
             $table->timestamps();
         });
+
+        DB::table('academies')->insert([
+            ['id' => DB::raw('(uuid_generate_v4())'), 'name' => 'Ciencias Básicas', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => DB::raw('(uuid_generate_v4())'), 'name' => 'Ciencias Sociales', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => DB::raw('(uuid_generate_v4())'), 'name' => 'Trabajo Terminal', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => DB::raw('(uuid_generate_v4())'), 'name' => 'Ciencias de la Computación', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => DB::raw('(uuid_generate_v4())'), 'name' => 'Ciencias de Datos', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => DB::raw('(uuid_generate_v4())'), 'name' => 'Fundamentos de Sistemas Electrónicos', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => DB::raw('(uuid_generate_v4())'), 'name' => 'Inteligencia Artificial', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => DB::raw('(uuid_generate_v4())'), 'name' => 'Ingenieria de Software', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => DB::raw('(uuid_generate_v4())'), 'name' => 'Proyectos Estrategicos y Toma de Decisiones', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => DB::raw('(uuid_generate_v4())'), 'name' => 'Sistemas Digitales', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => DB::raw('(uuid_generate_v4())'), 'name' => 'Sistemas Distribuidos', 'created_at' => now(), 'updated_at' => now()],
+        ]);
     }
 
     /**
