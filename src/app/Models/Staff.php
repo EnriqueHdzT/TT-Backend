@@ -20,7 +20,6 @@ class Staff extends Model
         'second_lastname',
         'name',
         'precedence',
-        'academy',
         'altern_email',
         'phone_number',
         'staff_type',

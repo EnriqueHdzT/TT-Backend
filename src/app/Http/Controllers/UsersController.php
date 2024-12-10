@@ -546,10 +546,7 @@ class UsersController extends Controller
             if ($academy) {
                 $staff->academies()->attach($academy->id);
             } else {
-                $newAcademy = new Academy();
-                $newAcademy->name = $academyName;
-                $newAcademy->save();
-                $staff->academies()->attach($newAcademy->id);
+                return response()->json(['message' => 'Academia no encontrada'], 404);
             }
         }
 
@@ -592,7 +589,6 @@ class UsersController extends Controller
                     ]);
                     $staff->save();
 
-                    // Handle academy relationships
                     if (isset($request->academy) && is_array($request->academy)) {
                         $currentAcademies = $staff->academies->pluck('name')->toArray();
                         $academiesToRemove = array_diff($currentAcademies, $request->academy);
@@ -609,12 +605,11 @@ class UsersController extends Controller
 
                         foreach ($academiesToAdd as $academyName) {
                             $academy = Academy::where('name', $academyName)->first();
-                            if (!$academy) {
-                                $academy = new Academy();
-                                $academy->name = $academyName;
-                                $academy->save();
+                            if ($academy) {
+                                $staff->academies()->attach($academy->id);
+                            } else {
+                                return response()->json(['message' => 'Academia no encontrada'], 404);
                             }
-                            $staff->academies()->attach($academy->id);
                         }
                     }
                 } else {
