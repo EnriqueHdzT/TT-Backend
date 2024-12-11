@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Student extends Model
 {
@@ -31,10 +32,15 @@ class Student extends Model
         return $this->belongsTo(User::class, 'id', 'id');
     }
 
+    public function protocolRoles()
+    {
+        return $this->hasMany(ProtocolRole::class, 'user_id')
+            ->where('role', 'student');
+    }
+
     public function protocols()
     {
-        return $this->hasMany(Protocol::class, 'student1_id')->orWhere('student2_id', $this->id)
-            ->orWhere('student3_id', $this->id)->orWhere('student4_id', $this->id);
+        return $this->belongsToMany(Protocol::class, 'protocol_roles', 'user_id', 'protocol_id');
     }
 
     protected static function boot()
@@ -42,14 +48,16 @@ class Student extends Model
         parent::boot();
 
         static::deleting(function ($student) {
-            DB::table('protocols')->where('student1_id', $student->id)
-                ->update(['student1_data' => json_encode($student->toArray())]);
-            DB::table('protocols')->where('student2_id', $student->id)
-                ->update(['student2_data' => json_encode($student->toArray())]);
-            DB::table('protocols')->where('student3_id', $student->id)
-                ->update(['student3_data' => json_encode($student->toArray())]);
-            DB::table('protocols')->where('student4_id', $student->id)
-                ->update(['student4_data' => json_encode($student->toArray())]);
+            $student->load('user');
+            $backupData = array_merge(
+                $student->toArray(),
+                ['email' => $student->user?->email]
+            );
+            DB::table('protocol_roles')
+                ->where('user_id', $student->id)
+                ->where('role', 'student')
+                ->update(['person_data_backup' => json_encode($backupData)]);
+
             $student->user()->delete();
         });
     }

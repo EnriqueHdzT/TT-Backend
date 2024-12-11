@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\BienvenidoVerifMail;
-use function Laravel\Prompts\alert;
+
 
 class AuthController extends Controller
 {
@@ -65,7 +65,7 @@ class AuthController extends Controller
             $newStudent->curriculum = $request->curriculum;
             $newStudent->save();
 
-            $verificationUrl = url('/api/verify-email/' .($newUser->id));
+            $verificationUrl = url('/api/verify-email/' . ($newUser->id));
 
 
             Mail::to($newUser->email)->send(new BienvenidoVerifMail($newUser, $verificationUrl));
@@ -101,7 +101,7 @@ class AuthController extends Controller
                 $user = Auth::user();
 
                 // TODO - Terminar de implementar cuando funcionalidad de correo este lista
-                 if (!$user->email_is_verified) {
+                if (!$user->email_is_verified) {
                     return response()->json(['message' => 'El correo no ha sido verificado. Por favor revise su correo.'], 401);
                 }
                 $token = $user->createToken('SessionToken', []);
@@ -147,32 +147,8 @@ class AuthController extends Controller
         }
     }
 
-    public function keepAlive(Request $request)
+    public function recuperarPassword(Request $request)
     {
-        try {
-            $user = Auth::user();
-
-            $tokenValue = $request->bearerToken();
-            $tokenParts = explode('|', $tokenValue, 2);
-            $token = $user->tokens()
-                ->where('id', $tokenParts[0])
-                ->where('token', hash('sha256', $tokenParts[1]))
-                ->first();
-            if (!$token || $token->name !== 'SessionToken' || $token->expires_at <= now()) {
-                $token?->delete();
-                return response()->json(['message' => 'Sesión caducada'], 401);
-            }
-
-            $token->expires_at = now()->addMinutes(15);
-            $token->save();
-
-            return response()->json(['message' => 'Sesión actualizada'], 200);
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Hubo un error en el servidor'], 500);
-        }
-    }
-
-    public function recuperarPassword(Request $request){
         // Validar el correo electrónico
         $request->validate([
             'email' => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@alumno\.ipn\.mx$/'
@@ -184,11 +160,11 @@ class AuthController extends Controller
             return response()->json(['message' => 'Correo no encontrado'], 404);
         }
 
-        $user-> remember_token = Str::random(60);
+        $user->remember_token = Str::random(60);
         $user->save();
 
         // URL de recuperación de contraseña usando el ID del usuario
-        $resetUrl = url('http://localhost:5173/recuperar/'.$user->remember_token);
+        $resetUrl = url('http://localhost:5174/recuperar/' . $user->remember_token);
 
 
         // Enviar correo electrónico
@@ -221,7 +197,8 @@ class AuthController extends Controller
         return response()->json(['message' => 'Contraseña actualizada exitosamente'], 200);
     }
 
-    public function recibiremail(Request $request) {
+    public function recibiremail(Request $request)
+    {
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255',
@@ -244,5 +221,4 @@ class AuthController extends Controller
             }
         }
     }
-
 }

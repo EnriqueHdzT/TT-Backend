@@ -13,7 +13,7 @@ class FileService
         $filename = str_replace('../', '', $_filename);
 
         // Adjust this path to match the documents' location
-        $path = storage_path('app/uploads/' . $filename);
+        $path = storage_path('app/' . $filename);
 
         if (!File::exists($path)) {
             return response()->json(['error' => 'File not found.'], 404);

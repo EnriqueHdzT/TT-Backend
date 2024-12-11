@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-
+use Carbon\Carbon;
 use App\Models\DatesAndTerms;
 
 class DatesAndTermsController extends Controller
@@ -121,6 +121,24 @@ class DatesAndTermsController extends Controller
         }
     }
 
+    public function getAllSchoolCyclesAsArray()
+    {
+        try {
+            $schoolCycles = DatesAndTerms::orderByRaw("CAST(split_part(cycle, '/', 1) AS INTEGER) DESC")
+                ->orderByRaw("CAST(split_part(cycle, '/', 2) AS INTEGER) DESC")
+                ->pluck('cycle')
+                ->toArray();
+
+            if (empty($schoolCycles)) {
+                return response()->json([], 404);
+            }
+
+            return response()->json($schoolCycles, 200, [], JSON_UNESCAPED_SLASHES);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error en el servidor'], 500);
+        }
+    }
+
     public function deleteSchoolCycle(Request $request)
     {
         try {
@@ -172,19 +190,19 @@ class DatesAndTermsController extends Controller
             }
 
             $activeCycles = $activeCycles->sortByDesc('cycle');
-            $currentDate = date('d-m-Y');
+            $currentDate = Carbon::now();
 
             foreach ($activeCycles as $cycle) {
-                $ordStart = date('d-m-Y', strtotime($cycle->ord_start_update_protocols));
-                $ordEnd = date('d-m-Y', strtotime($cycle->ord_end_update_protocols));
-                $extStart = date('d-m-Y', strtotime($cycle->ext_start_update_protocols));
-                $extEnd = date('d-m-Y', strtotime($cycle->ext_end_update_protocols));
+                $ordStart = Carbon::parse($cycle->ord_start_update_protocols);
+                $ordEnd = Carbon::parse($cycle->ord_end_update_protocols);
+                $extStart = Carbon::parse($cycle->ext_start_update_protocols);
+                $extEnd = Carbon::parse($cycle->ext_end_update_protocols);
 
-                if (($currentDate >= $ordStart && $currentDate <= $ordEnd)) {
+                if ($currentDate->between($ordStart, $ordEnd)) {
                     return response()->json(['type' => 'ord', 'cycle' => $cycle->cycle], 200);
                 }
 
-                if (($currentDate >= $extStart && $currentDate <= $extEnd)) {
+                if ($currentDate->between($extStart, $extEnd)) {
                     return response()->json(['type' => 'ext', 'cycle' => $cycle->cycle], 200);
                 }
             }

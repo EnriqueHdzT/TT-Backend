@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Models\Student;
 use App\Models\Staff;
+use App\Models\Academy;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Ramsey\Uuid\Uuid;
@@ -26,7 +27,7 @@ class UsersController extends Controller
         'staff' => ['lastname', 'second_lastname', 'name']
     ];
 
-    protected $wantedUsers = 9;
+    protected $wantedUsers = 8;
 
     public function searchUsers(Request $request)
     {
@@ -38,7 +39,7 @@ class UsersController extends Controller
         $field = trim($request->field);
         $page = $request->page;
 
-        $totalPages = 0;
+        $totalPages = 1;
         $usersResponse["staff"] = [];
         $usersResponse["students"] = [];
         $uniqueUserIds = [];
@@ -228,7 +229,7 @@ class UsersController extends Controller
         $filters = collect($headers)->except('page')->all();
         $page = $headers['page'];
 
-        $totalPages = 0;
+        $totalPages = 1;
         $usersResponse = [];
         $usersFound = [];
 
@@ -241,7 +242,7 @@ class UsersController extends Controller
                 ->with('student')
                 ->with('staff')
                 ->get();
-            $totalPages = ceil(User::count() / 9);
+            $totalPages = ceil(User::count() / $this->wantedUsers);
         } elseif ($filters['userType'] === "Docentes") {
             if (!array_key_exists("precedence", $filters)) {
                 $usersFound = User::orderBy('created_at', 'desc')
@@ -251,7 +252,7 @@ class UsersController extends Controller
                     ->whereHas('staff')
                     ->with('staff')
                     ->get();
-                $totalPages = ceil(Staff::count() / 9);
+                $totalPages = ceil(Staff::count() / $this->wantedUsers);
             } elseif (!array_key_exists("academy", $filters)) {
                 if ($filters['precedence'] === "Interino") {
                     $usersFound = User::whereHas('staff', function ($query) use ($filters) {
@@ -263,7 +264,7 @@ class UsersController extends Controller
                         ->take($page * $this->wantedUsers)
                         ->with('staff')
                         ->get();
-                    $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->count() / 9);
+                    $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->count() / $this->wantedUsers);
                 } elseif ($filters['precedence'] === "Externo") {
                     $usersFound = User::whereHas('staff', function ($query) use ($filters) {
                         $query->where('precedence', '!=', 'ESCOM');
@@ -274,20 +275,30 @@ class UsersController extends Controller
                         ->take($page * $this->wantedUsers)
                         ->with('staff')
                         ->get();
-                    $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->count() / 9);
+                    $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->count() / $this->wantedUsers);
                 }
             } else {
                 $usersFound = User::whereHas('staff', function ($query) use ($filters) {
                     $query->where('precedence', 'ESCOM')
-                        ->where('academy', $filters['academy']);
+                        ->whereHas('academies', function ($academyQuery) use ($filters) {
+                            $academyQuery->where('name', $filters['academy']);
+                        });
                 })
                     ->orderBy('created_at', 'desc')
                     ->latest()
                     ->skip(($page - 1) * $this->wantedUsers)
                     ->take($page * $this->wantedUsers)
-                    ->with('staff')
+                    ->with(['staff.academies'])
                     ->get();
-                $totalPages = ceil(Staff::where('precedence', '!=', 'ESCOM')->where('academy', $filters['academy'])->count() / 9);
+
+                $totalPages = ceil(
+                    User::whereHas('staff', function ($query) use ($filters) {
+                        $query->where('precedence', 'ESCOM')
+                            ->whereHas('academies', function ($academyQuery) use ($filters) {
+                                $academyQuery->where('name', $filters['academy']);
+                            });
+                    })->count() / $this->wantedUsers
+                );
             }
         } elseif ($filters['userType'] === "Alumnos") {
             if (!array_key_exists("career", $filters)) {
@@ -299,7 +310,7 @@ class UsersController extends Controller
                     ->whereHas('student')
                     ->with('student')
                     ->get();
-                $totalPages = ceil(Student::count() / 9);
+                $totalPages = ceil(Student::count() / $this->wantedUsers);
             } elseif (!array_key_exists("curriculum", $filters)) {
                 $usersFound = User::whereHas('student', function ($query) use ($filters) {
                     $query->where('career', $filters['career']);
@@ -310,7 +321,7 @@ class UsersController extends Controller
                     ->take($page * $this->wantedUsers)
                     ->with('student')
                     ->get();
-                $totalPages = ceil(Student::where('career', $filters['career'])->count() / 9);
+                $totalPages = ceil(Student::where('career', $filters['career'])->count() / $this->wantedUsers);
             } else {
                 $usersFound = User::whereHas('student', function ($query) use ($filters) {
                     $query->where('career', $filters['career'])
@@ -322,7 +333,7 @@ class UsersController extends Controller
                     ->take($page * $this->wantedUsers)
                     ->with('student')
                     ->get();
-                $totalPages = ceil(Student::where('career', $filters['career'])->where('curriculum', $filters['curriculum'])->count() / 9);
+                $totalPages = ceil(Student::where('career', $filters['career'])->where('curriculum', $filters['curriculum'])->count() / $this->wantedUsers);
             }
         }
         $usersResponse = $usersFound;
@@ -332,33 +343,42 @@ class UsersController extends Controller
             return response()->json(['message' => 'Usuarios no encontrados'], 404);
         }
 
-        foreach ($usersResponse as $user) {
-            unset($user['name']);
-            unset($user['email_verified_at']);
-            unset($user['created_at']);
-            unset($user['updated_at']);
-            if (!$user['staff']) {
-                unset($user['staff']);
-                unset($user['student']['id']);
-                unset($user['student']['']);
-                unset($user['student']['student_id']);
-                unset($user['student']['altern_email']);
-                unset($user['student']['phone_number']);
-                unset($user['student']['created_at']);
-                unset($user['student']['updated_at']);
-            } else {
-                unset($user['student']);
-                unset($user['staff']['id']);
-                unset($user['staff']['']);
-                unset($user['staff']['staff_id']);
-                unset($user['staff']['altern_email']);
-                unset($user['staff']['phone_number']);
-                unset($user['staff']['created_at']);
-                unset($user['staff']['updated_at']);
+        $replyData = [];
+        foreach ($usersResponse as &$user) {
+            $newUser = [];
+
+            $newUser['id'] = $user->id;
+            $newUser['email'] = $user->email;
+
+            // Check if student exists and add their data
+            if ($user->student !== null) {
+                $newUser['student']['name'] = $user->student->name;
+                $newUser['student']['lastname'] = $user->student->lastname;
+                if ($user->student->second_lastname !== null) {
+                    $newUser['student']['second_lastname'] = $user->student->second_lastname;
+                }
+                $newUser['student']['student_id'] = $user->student->student_id;
+                $newUser['student']['career'] = $user->student->career;
+                $newUser['student']['curriculum'] = $user->student->curriculum;
+            } elseif ($user->staff !== null) {  // Ensure $user->staff is also not null
+                $newUser['staff']['name'] = $user->staff->name;
+                $newUser['staff']['lastname'] = $user->staff->lastname;
+                if ($user->staff->second_lastname !== null) {
+                    $newUser['staff']['second_lastname'] = $user->staff->second_lastname;
+                }
+                $newUser['staff']['precedence'] = $user->staff->precedence;
+                $newUser['staff']['academies'] = $user->staff->academies->pluck('name')->toArray();
             }
+
+            // Add the new user to the response array
+            $replyData[] = (object) $newUser;
         }
-        $usersResponse['numPages'] = $totalPages;
-        return $usersResponse;
+
+        // Add numPages to the response array
+        $replyData[] = ['numPages' => $totalPages];
+
+        // Return the modified data
+        return $replyData;
     }
 
     public function deleteUser($id)
@@ -370,7 +390,7 @@ class UsersController extends Controller
         }
 
         $user->delete();
-        return response()->json(['message' => 'Estudiante eliminado exitosamente'], 200);
+        return response()->json(['message' => 'Usuario eliminado exitosamente'], 200);
     }
 
     public function getSelfId()
@@ -384,41 +404,55 @@ class UsersController extends Controller
 
     public function getUserData($id)
     {
-        if (!Uuid::isValid($id)) {
-            return response()->json(['message' => 'Usuario no encontrado'], 404);
-        }
+        $authUser = Auth::user();
         $user = User::find($id);
+
         if (!$user) {
-            return response()->json(['message' => 'Usuario no encontrado'], 404);
+            return response()->json(['message' => 'User not found'], 404);
         }
-        
+
         $userInfo = [];
         $privilegedRoles = ['AnaCATT', 'SecEjec', 'SecTec', 'Presidente'];
-        $requestingUser = Auth::user();
 
-        if ($requestingUser->staff) {
-            if (in_array($requestingUser->staff->staff_type, $privilegedRoles)) {
-                if ($user->student) {
-                    $userInfo = $user->student->toArray();
-                    $userInfo["userType"] = "student";
-                } elseif ($user->staff) {
-                    $userInfo = $user->staff->toArray();
-                    $userInfo["userType"] = "staff";
+        // Check if the authenticated user has privileged roles and retrieve the user's data accordingly
+        if ($authUser->staff && in_array($authUser->staff->staff_type, $privilegedRoles)) {
+            if ($user->student) {
+                $userInfo = $user->student->toArray();
+                $userInfo['user_type'] = 'student';
+            } elseif ($user->staff) {
+                $userInfo = $user->staff->toArray();
+                $userInfo['user_type'] = 'staff';
+
+                // Add the academies if they exist
+                $academies = $user->staff->academies()->pluck('name')->toArray();
+                if (!empty($academies)) {
+                    $userInfo['academies'] = $academies;
                 }
-            } else {
-                $userInfo = $requestingUser->staff->toArray();
-                $userInfo["userType"] = "staff";
             }
         } else {
-            $userInfo = $requestingUser->student->toArray();
-            $userInfo["userType"] = "student";
+            // If the authenticated user is a student or staff member but not privileged
+            if ($authUser->student) {
+                $userInfo = $authUser->student->toArray();
+                $userInfo['user_type'] = 'student';
+            } else {
+                $userInfo = $authUser->staff->toArray();
+                $userInfo['user_type'] = 'staff';
+
+                // Add the academies if they exist
+                $academies = $authUser->staff->academies()->pluck('name')->toArray();
+                if (!empty($academies)) {
+                    $userInfo['academies'] = $academies;
+                }
+            }
         }
 
+        // Remove unnecessary fields from the response
         unset($userInfo['id'], $userInfo['created_at'], $userInfo['updated_at']);
         $userInfo['email'] = $user->email;
 
         return response()->json($userInfo, 200);
     }
+
 
     public function createStudent(Request $request)
     {
@@ -462,39 +496,59 @@ class UsersController extends Controller
 
     public function createStaff(Request $request)
     {
-        $rules = [
-            'email' => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@ipn\.mx$/',
+        $request->validate([
+            'email' => [
+                'required',
+                'email',
+                'regex:/^[a-zA-Z0-9._%+-]+@ipn\.mx$/',
+            ],
             'name' => 'required|string',
             'lastName' => 'required|string',
-            'secondLastName' => 'string',
+            'secondLastName' => 'nullable|string',
             'precedence' => 'required|string',
-            'academy' => 'string',
-            'userType' => 'required|in:Prof, PresAcad, JefeDepAcad, AnaCATT , SecEjec, SecTec, Presidente',
-        ];
+            'academy' => 'array|min:1',
+            'academy.*' => 'string',
+            'userType' => 'required|in:Prof,AnaCATT,SecEjec,SecTec,Presidente',
+        ]);
 
-        $validator = Validator::make($request->all(), $rules);
-        if ($validator->fails()) {
-            return response()->json(['message' => $validator->errors()], 422);
-        }
-
-        $user = User::where('email', $request->email)->first();
-        if ($user) {
+        // Check if the user already exists
+        $existingUser = User::where('email', $request->email)->first();
+        if ($existingUser) {
             return response()->json(['message' => 'Ya existe un usuario con este correo'], 422);
         }
+
+        // Create the user
         $user = new User();
         $user->email = $request->email;
         $user->password = Hash::make(Str::random(12));
         $user->save();
 
+        if (!$user) {
+            return response()->json(['message' => 'Error al crear el usuario'], 500);
+        }
+
+        // Create the staff record
         $staff = new Staff();
         $staff->id = $user->id;
         $staff->name = $request->name;
         $staff->lastname = $request->lastName;
         $request->secondLastName == null ? $staff->second_lastname = null : $staff->second_lastname = $request->secondLastName;
         $staff->precedence = $request->precedence;
-        $staff->academy = $request->academy;
         $staff->staff_type = $request->userType;
         $staff->save();
+
+        if (!$staff) {
+            return response()->json(['message' => 'Error al crear el profesor'], 500);
+        }
+
+        foreach ($request->academy as $academyName) {
+            $academy = Academy::where('name', $academyName)->first();
+            if ($academy) {
+                $staff->academies()->attach($academy->id);
+            } else {
+                return response()->json(['message' => 'Academia no encontrada'], 404);
+            }
+        }
 
         return response()->json(['message' => 'Profesor creado exitosamente'], 200);
     }
@@ -519,19 +573,45 @@ class UsersController extends Controller
 
             if ($currentUser->id === $user->id || $isAuthorizedStaff) {
                 $user->email = $request->email ?? $user->email;
+
                 if ($user->staff) {
                     $staff = $user->staff;
+
+                    // Update basic staff data
                     $staff->fill([
                         'name' => $request->name ?? $staff->name,
                         'lastname' => $request->lastName ?? $staff->lastname,
                         'second_lastname' => $request->secondLastName ?? $staff->second_lastname,
                         'precedence' => $request->precedence ?? $staff->precedence,
-                        'academy' => $request->academy ?? $staff->academy,
                         'staff_type' => $request->userType ?? $staff->staff_type,
                         'altern_email' => $request->alternEmail ?? $staff->altern_email,
                         'phone_number' => $request->phoneNumber ?? $staff->phone_number,
                     ]);
                     $staff->save();
+
+                    if (isset($request->academy) && is_array($request->academy)) {
+                        $currentAcademies = $staff->academies->pluck('name')->toArray();
+                        $academiesToRemove = array_diff($currentAcademies, $request->academy);
+
+                        foreach ($academiesToRemove as $academyName) {
+                            $academy = Academy::where('name', $academyName)->first();
+                            if ($academy) {
+                                $staff->academies()->detach($academy->id);
+                            }
+                        }
+
+                        // Add new academies that are not currently related
+                        $academiesToAdd = array_diff($request->academy, $currentAcademies);
+
+                        foreach ($academiesToAdd as $academyName) {
+                            $academy = Academy::where('name', $academyName)->first();
+                            if ($academy) {
+                                $staff->academies()->attach($academy->id);
+                            } else {
+                                return response()->json(['message' => 'Academia no encontrada'], 404);
+                            }
+                        }
+                    }
                 } else {
                     $student = $user->student;
                     $student->fill([
@@ -554,5 +634,36 @@ class UsersController extends Controller
         } catch (\Exception $e) {
             return response()->json(['message' => 'Error al actualizar los datos'], 500);
         }
+    }
+
+
+    public function doesUserExists($email)
+    {
+        $user = User::where('email', $email)->first();
+        if ($user) {
+            $name = "";
+            $lastName = "";
+            $secondLastName = "";
+            if ($user->staff) {
+                $name = $user->staff->name;
+                $lastName = $user->staff->lastname;
+                $secondLastName = $user->staff->second_lastname;
+            } else if ($user->student) {
+                $name = $user->student->name;
+                $lastName = $user->student->lastname;
+                $secondLastName = $user->student->second_lastname;
+            }
+            return response()->json(["name" => $name, "lastName" => $lastName, "secondLastName" => $secondLastName], 200);
+        }
+        return response()->json(['message' => 'Usuario no encontrado'], 404);
+    }
+
+    public function getSelfEmail()
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['message' => 'No se pudo obtener el correo del usuario'], 404);
+        }
+        return response()->json(['email' => $user->email], 200);
     }
 }

@@ -4,26 +4,42 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\ContenidoPrincipal;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class PublicacionesController extends Controller
 {
-
-    public function setAvisos(Request $request) {
+    public function setAviso(Request $request) {
         try {
             // Validar la solicitud
             $validatedData = $request->validate([
                 'titulo' => 'required|string|max:255',
                 'descripcion' => 'required|string',
-                'url_imagen' => 'nullable|string|max:500',
                 'fecha' => 'required|date_format:Y-m-d',
             ]);
+
+            $cloudinary = new Cloudinary([
+                'cloud' => [
+                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+                    'api_key'    => env('CLOUDINARY_API_KEY'),
+                    'api_secret' => env('CLOUDINARY_API_SECRET'),
+                ],
+            ]);
+
+            $url_imagen = null;
+            if ($request->hasFile('imagen')) {
+                // Subir imagen a Cloudinary
+                $uploadResult = $cloudinary->uploadApi()->upload($request->file('imagen')->getRealPath(), [
+                    'folder' => 'avisos'
+                ]);
+                $url_imagen = $uploadResult['secure_url'];
+            }
 
             // Crear el aviso utilizando el modelo Eloquent
             ContenidoPrincipal::create([
                 'tipo_contenido' => 'aviso',
                 'titulo' => $validatedData['titulo'],
                 'descripcion' => $validatedData['descripcion'],
-                'url_imagen' => $request->input('url_imagen'),
+                'url_imagen' => $url_imagen,
                 'fecha' => $validatedData['fecha'],
             ]);
 
@@ -35,7 +51,6 @@ class PublicacionesController extends Controller
         }
     }
 
-    // Función para  los avisos
     public function getAviso()
     {
         try {
@@ -275,4 +290,6 @@ class PublicacionesController extends Controller
             return response()->json(['error' => 'Error al eliminar el pregunta'], 500);
         }
     }
+
 }
+

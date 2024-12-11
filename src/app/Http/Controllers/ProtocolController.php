@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DatesAndTerms;
 use Illuminate\Http\Request;
+use Exception;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 
 use App\Models\User;
 use App\Models\Staff;
 use App\Models\Student;
 use App\Models\Protocol;
+use App\Models\ProtocolRole;
 use App\Services\FileService;
 use Illuminate\Support\Facades\Auth;
 
@@ -25,152 +30,221 @@ class ProtocolController extends Controller
 
     public function createProtocol(Request $request)
     {
-        $request->validate([
-            'title' => 'required|string',
-            'students' => 'required|array|min:1|max:4',
-            'students.*.email' => 'required|string',
-            'directors' => 'required|array|min:1|max:2',
-            'directors.*.email' => 'required|string',
-            'keywords' => 'required|array|min:1|max:4',
-            'keywords.*.keyword' => 'required|string',
-            'pdf' => 'file|mimes:pdf',
-        ]);        
+        try {
+            $request->merge([
+                'students' => json_decode($request->input('students'), true),
+                'directors' => json_decode($request->input('directors'), true),
+                'sinodals' => json_decode($request->input('sinodals', '[]'), true),
+                'keywords' => json_decode($request->input('keywords'), true),
+            ]);
 
-        // Validate and process students
-        $studentIDs = [];
-        $studentTableIDs = [];
-        $studentEmails = [];
-        foreach ($request->students as $student) {
+            // Define validation rules
+            $rules = [
+                'title' => 'required|string',
+                'resume' => 'required|string',
+                'students' => 'required|array|min:1|max:4',
+                'students.*.email' => 'required|string|distinct',
+                'directors' => 'required|array|min:1|max:2',
+                'directors.*.email' => 'required|string|distinct',
+                'sinodals' => 'array|min:3|max:3',
+                'sinodals.*.email' => 'string|distinct',
+                'term' => 'required|string',
+                'keywords' => 'required|array|min:1|max:4',
+                'pdf' => 'required|file|mimes:pdf|max:6144',
+            ];
+            
+            $user = Auth::user();
+            $isStudent = $user->student;
+
+            if ($isStudent) {
+                unset($rules['sinodals'], $rules['term']);
+                $request->replace($request->except(['term'])); // Quitar para evitar inyección de 'term' en el request
+            } elseif (!in_array($user->staff->staff_type, ['AnaCATT', 'SecEjec', 'SecTec', 'Presidente'])) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            // Validate the request
+            $validator = Validator::make($request->all(), $rules);
+            if ($validator->fails()) {
+                return response()->json(['message' => $validator->errors()], 422);
+            }
+
+            // Process participants
+            $students = $this->processStudents($request->input('students'), $user, $isStudent);
+            $directors = $this->processDirectors($request->input('directors'));
+            $sinodals = $isStudent ? [] : $this->processSinodals($request->input('sinodals'));
+
+            // Create protocol
+            $protocol = $this->createProtocolRecord($request, $students['ids'], $directors['ids'], $sinodals['ids'] ?? []);
+
+            return response()->json(['message' => 'Protocol created successfully.', 'protocol' => $protocol], 201);
+        } catch (Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+
+    private function processStudents($students, $user, $isStudent)
+    {
+        $studentIds = [];
+
+        foreach ($students as &$student) {
             $existingStudent = User::where('email', $student['email'])->first();
 
             if ($existingStudent) {
-                $student['name'] = $existingStudent->student['name'];
-                $student['lastname'] = $existingStudent->student['lastname'];
-                $student['second_lastname'] = $existingStudent->student['second_lastname'];
-                $student['student_id'] = $existingStudent->student['student_id'];
-                $student['career'] = $existingStudent->student['career'];
-                $student['curriculum'] = $existingStudent->student['curriculum'];
-
-                $studentTableIDs[] = $existingStudent->student['id'];
+                $studentIds[] = $existingStudent->id;
             } else {
-                $studentsValidator = Validator::make($student, [
-                    'email' => 'required|string',
-                    'name' => 'required|string',
-                    'lastname' => 'required|string',
-                    'second_lastname' => 'required|string',
-                    'student_id' => 'required|string',
-                    'career' => 'required|in:ISW,IIA,ICD',
-                    'curriculum' => 'required|in:2009,2020|date_format:Y',
-                ]);
-                
-                if($studentsValidator->fails()){
-                    $errors = $studentsValidator->errors()->toArray();
-                    return response()->json([$errors], 400);
-                }
-                $newUser = new User();
-                $newUser->email = $student['email'];
-                $newUser->password = bcrypt(Str::random(12));
-                $newUser->save();
-                
-                $newStudent = new Student();
-                $newStudent->id = $newUser->id;
-                $newStudent->name = $student['name'];
-                $newStudent->lastname = $student['lastname'];
-                $newStudent->second_lastname = $student['second_lastname'];
-                $newStudent->student_id = $student['student_id'];
-                $newStudent->career = $student['career'];
-                $newStudent->curriculum = $student['curriculum'];
-                $newStudent->save();
-
-                $studentTableIDs[] = $newStudent['id'];
+                $newStudent = $this->createStudent($student);
+                $studentIds[] = $newStudent->id;
             }
-            $studentIDs[] = $student['student_id'];
-            $studentEmails[] = $student['email'];
-        }
-        
-        // Validate students duplicity
-        $uniqueStudentIDs = array_unique($studentIDs);
-        $uniqueStudentEmails = array_unique($studentEmails);
-        if (count($studentIDs) !== count($uniqueStudentIDs) || count($studentEmails) !== count($uniqueStudentEmails)) {
-            return response()->json(['error' => 'Duplicated students'], 400);
         }
 
-        $directorsIDs = [];
-        $directorsTableIDs = [];
-        $directorsEmails = [];
-        $hasESCOM = false;
-        foreach ($request->directors as $director) {
-            $existingdirector = User::where('email', $director['email'])->first();
-
-            if ($existingdirector) {
-                $director['name'] = $existingdirector->staff['name'];
-                $director['lastname'] = $existingdirector->staff['lastname'];
-                $director['second_lastname'] = $existingdirector->staff['second_lastname'];
-                $director['student_id'] = $existingdirector->staff['staff_id'];
-                $director['precedence'] = $existingdirector->staff['precedence'];
-                $director['academy'] = $existingdirector->staff['academy'];
-
-                $directorsTableIDs[] = $existingdirector->staff['id'];
-            } else {
-                $directorValidator = Validator::make($director, [
-                    'email' => 'required|string',
-                    'name' => 'required|string',
-                    'lastname' => 'required|string',
-                    'second_lastname' => 'required|string',
-                    'staff_id' => 'required|string',
-                    'precedence' => 'required|string',
-                ]);
-                
-                if($directorValidator->fails()){
-                    $errors = $directorValidator->errors()->toArray();
-                    return response()->json([$errors], 400);
-                }
-                $newUser = new User();
-                $newUser->email = $director['email'];
-                $newUser->password = bcrypt(Str::random(12));
-                $newUser->save();
-                
-                $newStaff = new Staff();
-                $newStaff->id = $newUser->id;
-                $newStaff->name = $director['name'];
-                $newStaff->lastname = $director['lastname'];
-                $newStaff->second_lastname = $director['second_lastname'];
-                $newStaff->staff_id = $director['staff_id'];
-                $newStaff->precedence = $director['precedence'];
-                $newStaff->academy = $director['academy'];
-                $newStaff->save();
-
-                $directorsTableIDs[] = $newStaff['id'];
-            }
-            if($director['precedence'] === 'ESCOM'){
-                $hasESCOM = true;
-            }
-            $directorsIDs[] = $director['staff_id'];
-            $directorsEmails[] = $director['email'];
+        if ($isStudent && ($students[0]['email'] ?? null) !== $user->email) {
+            throw new Exception('The first student must be the one making the request.');
         }
 
-        // Validate staffs duplicity
-        $uniqueDirectorsIDs = array_unique($directorsIDs);
-        $uniqueDirectorsEmails = array_unique($directorsEmails);
-        if (count($directorsIDs) !== count($uniqueDirectorsIDs) || count($directorsEmails) !== count($uniqueDirectorsEmails)) {
-            return response()->json(['error' => 'Duplicated staff'], 400);
-        }
-        if (!$hasESCOM) {
-            return response()->json(['error' => 'At least one staff member must have precedence ESCOM'], 400);
-        }
-
-        $studentTableIDs = array_unique($studentTableIDs);
-        $directorsTableIDs = array_unique($directorsTableIDs);
-
-        $newProtocol = new Protocol;
-        $newProtocol->title = $request->title;
-        $newProtocol->keywords = json_encode($request->keywords);
-        $newProtocol->save();
-        $newProtocol->students()->attach($studentTableIDs);
-        $newProtocol->directors()->attach($directorsTableIDs);
-
-        return response()->json($request, 201);
+        return ['ids' => $studentIds];
     }
+
+    private function processDirectors($directors)
+    {
+        $directorIds = [];
+        $firstDirector = User::where('email', $directors[0]['email'])->first();
+
+        if (!$firstDirector) {
+            throw new Exception("First director with email {$directors[0]['email']} must be registered.");
+        }
+
+        $directorIds[] = $firstDirector->id;
+
+        if (isset($directors[1])) {
+            $secondDirector = User::where('email', $directors[1]['email'])->first() ?: $this->createDirector($directors[1]);
+            $directorIds[] = $secondDirector->id;
+        }
+
+        return ['ids' => $directorIds];
+    }
+
+    private function processSinodals($sinodals)
+    {
+        $sinodalIds = [];
+
+        foreach ($sinodals as $sinodal) {
+            $registeredSinodal = User::where('email', $sinodal['email'])->first();
+
+            if (!$registeredSinodal) {
+                throw new Exception("Sinodal with email {$sinodal['email']} not found.");
+            }
+
+            $sinodalIds[] = $registeredSinodal->id;
+        }
+
+        return ['ids' => $sinodalIds];
+    }
+
+    private function createProtocolRecord($request, $studentIds, $directorIds, $sinodalIds)
+    {
+        DB::beginTransaction();
+        try {
+            $protocol = new Protocol();
+            $protocol->fill([
+                'title' => $request->input('title'),
+                'resume' => $request->input('resume'),
+                'keywords' => json_encode($request->input('keywords'))
+            ]);
+
+            $requestTerm = $request->input('term');
+            if(!$requestTerm)
+                $requestTerm = DatesAndTerms::latestCycle();
+
+            $datesAndTerms = DatesAndTerms::where('cycle', $requestTerm)->firstOrFail();
+            $protocol->period = $datesAndTerms->id;
+
+            [$year, $term] = explode('/', $datesAndTerms->cycle);
+            $year = (int)$year;
+            $letter = ($term == '1') ? 'B' : ($year++ && 'A');
+
+            $prefix = "{$year}-{$letter}";
+            $maxProtocol  = Protocol::where('period', $datesAndTerms->id)
+                ->where('protocol_id', 'like', "{$prefix}%")
+                ->lockForUpdate()
+                ->orderBy('protocol_id', 'desc')
+                ->first();
+
+            $nextNumber = $maxProtocol
+                ? (int)substr($maxProtocol->protocol_id, strlen($prefix)) + 1
+                : 1;
+
+            $protocol_id = sprintf('%s%03d', $prefix, $nextNumber);
+            $pdf = $request->file('pdf');
+            if ($pdf) {
+                $protocol->fill([
+                    'pdf' => $pdf->store("uploads/{$protocol_id}"),
+                    'protocol_id' => $protocol_id
+                ]);
+            }
+            $protocol->save();
+
+            foreach ($studentIds as $studentId) {
+                $newProtocolRole = new ProtocolRole();
+                $newProtocolRole->protocol_id = $protocol->id;
+                $newProtocolRole->user_id = $studentId;
+                $newProtocolRole->role = 'student';
+                $newProtocolRole->save();
+            }
+            foreach ($directorIds as $directorId) {
+                $newProtocolRole = new ProtocolRole();
+                $newProtocolRole->protocol_id = $protocol->id;
+                $newProtocolRole->user_id = $directorId;
+                $newProtocolRole->role = 'director';
+                $newProtocolRole->save();
+            }
+            foreach ($sinodalIds as $sinodalId) {
+                $newProtocolRole = new ProtocolRole();
+                $newProtocolRole->protocol_id = $protocol->id;
+                $newProtocolRole->user_id = $sinodalId;
+                $newProtocolRole->role = 'sinodal';
+                $newProtocolRole->save();
+            }
+
+            DB::commit();
+
+            return $protocol;
+        } catch (Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+
+    private function createStudent($student)
+    {
+        $user = User::create(['email' => $student['email'], 'password' => Hash::make(Str::random(12))]);
+        return Student::create([
+            'id' => $user->id,
+            'name' => $student['name'] ?? null,
+            'lastname' => $student['lastname'] ?? null,
+            'second_lastname' => $student['second_lastname'] ?? null,
+            'student_id' => $student['student_id'] ?? null,
+            'career' => $student['career'] ?? null,
+            'curriculum' => $student['curriculum'] ?? null,
+        ]);
+    }
+
+    private function createDirector($director)
+    {
+        $user = User::create(['email' => $director['email'], 'password' => Hash::make(Str::random(12))]);
+        $staff = Staff::create([
+            'id' => $user->id,
+            'name' => $director['name'] ?? null,
+            'lastname' => $director['lastname'] ?? null,
+            'second_lastname' => $director['second_lastname'] ?? null,
+            'staff_type' => 'Prof',
+            'precedence' => $director['precedence'] ?? null,
+        ]);
+        $staff->save();
+        return $staff;
+    }
+
+
 
     public function readProtocol($id)
     {
@@ -227,10 +301,11 @@ class ProtocolController extends Controller
         return response()->json(['message' => 'Datos del protocolo cargados exitosamente'], 200);
     }
 
-    public function deleteProtocol($id) {
+    public function deleteProtocol($id)
+    {
         $protocol = Protocol::find($id);
 
-        if (!$protocol) {    
+        if (!$protocol) {
             return response()->json(['message' => 'Protocolo no encontrado'], 404);
         }
 
@@ -241,74 +316,109 @@ class ProtocolController extends Controller
     public function getProtocolDoc(Request $request, $protocol_id)
     {
         $protocol = Protocol::where('protocol_id', $protocol_id)->first();
-        
+
         if (!$protocol) {
             return response()->json(['message' => 'Error'], 404);
         }
 
-        $protocolPath = $protocol_id.'/'.$protocol->pdf; // descomentar cuando exista la columna
+        $protocolPath = $protocol->pdf; // descomentar cuando exista la columna
 
         $user = Auth::user();
-        $isStudent = $user->student()->exists();
+        $isStudent = $user->student;
         $canAccess = false;
 
-        if($isStudent){
+        if ($isStudent) {
             $protocols = $user->student->protocols;
-            if($this->checkIfExists($protocol_id, $protocols)){
+            if ($this->checkIfExists($protocol_id, $protocols)) {
                 $canAccess = true;
             }
-        }else{
+        } else {
             $staff = $user->staff;
-            switch($staff->staff_type){
+            switch ($staff->staff_type) {
+                case 'PresAcad': 
+                case 'JefeDepAcad': 
+                case 'SecEjec': 
+                case 'SecTec': 
+                case 'Presidente':
                 case 'AnaCATT':
                     $canAccess = true;
                     break;
-                // poner cases para los demás tipos de staff
+                
+                case 'Prof': 
+                    $protocols = $staff->protocols;
+                    if ($this->checkIfExists($protocol_id, $protocols)) {
+                        $canAccess = true;
+                    }
+                    break;
             }
         }
 
-        if($canAccess){
+        if ($canAccess) {
             return $this->fileService->getFile($protocolPath);
-        }else{
+        } else {
             return response()->json(
-                ['message' => 'No tienes permiso para acceder a este recurso'], 
+                ['message' => 'No tienes permiso para acceder a este recurso'],
                 403
             );
         }
-
     }
 
     public function listProtocols(Request $request)
     {
         $user = Auth::user();
         $elementsPerPage = 9;
-        $isStudent = $user->student()->exists();
+        $isStudent = $user->student;
         $protocolsQuery = null;
         $cycle = $request->cycle;
         $page = $request->page ?? 1;
         $searchBar = $request->searchBar;
+        $orderBy = $request->orderBy;
 
         if ($isStudent) {
-            $protocolsQuery = $user->student->protocols()->whereHas('datesAndTerms', function ($query) use ($cycle) {
-                $query->where('cycle', $cycle);
-            });
+            $protocolsQuery = $user->student->protocols();
+            if ($cycle && $cycle != 'Todos') {
+                $protocolsQuery->whereHas('datesAndTerms', function ($query) use ($cycle) {
+                    $query->where('cycle', $cycle);
+                });
+            }
         } else {
             $staff = $user->staff;
             switch ($staff->staff_type) {
+                case 'PresAcad': 
+                case 'JefeDepAcad': 
+                case 'SecEjec': 
+                case 'SecTec': 
+                case 'Presidente':
                 case 'AnaCATT':
-                    $protocolsQuery = Protocol::whereHas('datesAndTerms', function ($query) use ($cycle) {
-                        $query->where('cycle', $cycle);
-                    });
+                case 'AnaCATT':
+                    $protocolsQuery = Protocol::query();
+                    if ($cycle && $cycle != 'Todos') {
+                        $protocolsQuery->whereHas('datesAndTerms', function ($query) use ($cycle) {
+                            $query->where('cycle', $cycle);
+                        });
+                    }
                     break;
-                // Add cases for other staff types
+
+                case 'Prof':
+                    $protocolsQuery = $staff->protocols();
+                    if ($cycle && $cycle != 'Todos') {
+                        $protocolsQuery->whereHas('datesAndTerms', function ($query) use ($cycle) {
+                            $query->where('cycle', $cycle);
+                        });
+                    }
+                    break;
             }
         }
 
         if ($searchBar) {
             $protocolsQuery->where(function ($query) use ($searchBar) {
                 $query->whereRaw('protocol_id ILIKE ?', ['%' . $searchBar . '%'])
-                      ->orWhereRaw('title ILIKE ?', ['%' . $searchBar . '%']);
+                    ->orWhereRaw('title ILIKE ?', ['%' . $searchBar . '%']);
             });
+        }
+
+        if ($orderBy) {
+            $protocolsQuery->orderByRaw("status = ? DESC", [$orderBy]);
         }
 
         $protocols = $protocolsQuery->paginate($elementsPerPage, ['*'], 'page', $page);
@@ -320,9 +430,10 @@ class ProtocolController extends Controller
         ], 200);
     }
 
-    public function checkIfExists($protocol_id, $protocols){
-        foreach($protocols as $protocol){
-            if($protocol->protocol_id == $protocol_id){
+    public function checkIfExists($protocol_id, $protocols)
+    {
+        foreach ($protocols as $protocol) {
+            if ($protocol->protocol_id == $protocol_id) {
                 return true;
             }
         }

@@ -49,4 +49,19 @@ class DatesAndTerms extends Model
     {
         return $this->hasMany(Protocol::class, 'period');
     }
+
+    public static function latestCycle()
+    {
+        return self::orderByRaw("CAST(split_part(cycle, '/', 1) AS INTEGER) DESC")
+            ->orderByRaw("CAST(split_part(cycle, '/', 2) AS INTEGER) DESC")
+            ->first()
+            ->cycle;
+
+        //// Si se quiere obtener el ciclo más reciente que esté activo:
+        // return self::where('status', true)
+        //     ->orderByRaw("CAST(split_part(cycle, '/', 1) AS INTEGER) DESC")
+        //     ->orderByRaw("CAST(split_part(cycle, '/', 2) AS INTEGER) DESC")
+        //     ->first()
+        //     ->cycle;
+    }
 }
