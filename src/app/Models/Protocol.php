@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\ProtocolStatus;
 
 class Protocol extends Model
 {
@@ -18,7 +19,7 @@ class Protocol extends Model
         'title',
         'resume',
         'period',
-        'status',
+        'current_status',
         'keywords',
         'pdf',
     ];
@@ -32,5 +33,15 @@ class Protocol extends Model
     public function datesAndTerms()
     {
         return $this->belongsTo(DatesAndTerms::class, 'period');
+    }
+
+    public function evaluations()
+    {
+        return $this->hasMany(Evaluation::class);
+    }
+
+    public function statusHistories()
+    {
+        return $this->hasMany(ProtocolStatus::class);
     }
 }

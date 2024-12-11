@@ -11,12 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('staff_academy', function (Blueprint $table) {
-            $table->uuid('staff_id')->index();
+        Schema::create('protocol_academy', function (Blueprint $table) {
+            $table->id();
+            $table->uuid('protocol_id')->index();
             $table->uuid('academy_id')->index();
             $table->timestamps();
-            $table->primary(['staff_id', 'academy_id']);
-            $table->foreign('staff_id')->references('id')->on('staff')->onDelete('cascade');
+
+            $table->foreign('protocol_id')->references('id')->on('protocols')->onDelete('cascade');
             $table->foreign('academy_id')->references('id')->on('academies')->onDelete('cascade');
         });
     }
@@ -26,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('staff_academy');
+        Schema::dropIfExists('protocol_academy');
     }
 };

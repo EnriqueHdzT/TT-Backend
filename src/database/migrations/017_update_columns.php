@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
-class UpdateColumns extends Migration
+return new class extends Migration
 {
     public function up()
     {
@@ -36,4 +36,4 @@ class UpdateColumns extends Migration
             $table->bigInteger('tokenable_id')->unsigned()->nullable();
         });
     }
-}
+};
