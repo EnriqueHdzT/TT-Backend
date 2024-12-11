@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\MensajeDeContacto;
 use App\Mail\RecuperarContrasena;
+use App\Models\ContenidoPrincipal;
 use App\Models\User;
 use App\Models\Student;
 use App\Models\Staff;
@@ -193,6 +194,26 @@ class AuthController extends Controller
         $user->remember_token = null;
         $user->save();
 
+
+        return response()->json(['message' => 'Contraseña actualizada exitosamente'], 200);
+    }
+
+    public function resetPasswordID(Request $request, $id)
+    {
+        // Validar la nueva contraseña
+        $validatedData = $request->validate([
+            'password' => 'required|string|size:64|confirmed',
+        ]);
+
+        // Verificar si el usuario existe
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['message' => 'Usuario no encontrado'], 404);
+        }
+        $hashedPassword = Hash::make($validatedData['password']);
+        $user->password = $hashedPassword;
+        $user->remember_token = null;
+        $user->save();
 
         return response()->json(['message' => 'Contraseña actualizada exitosamente'], 200);
     }
