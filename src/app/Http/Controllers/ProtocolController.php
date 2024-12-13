@@ -47,7 +47,7 @@ class ProtocolController extends Controller
                 'students.*.email' => 'required|string|email|distinct',
                 'directors' => 'required|array|min:1|max:2',
                 'directors.*.email' => 'required|string|email|distinct',
-                'sinodals' => 'array|min:3|max:3',
+                'sinodals' => 'array|min:0|max:3',
                 'sinodals.*.email' => 'string|email|distinct',
                 'term' => 'required|string',
                 'keywords' => 'required|array|min:1|max:4',
@@ -103,7 +103,11 @@ class ProtocolController extends Controller
             // Process participants
             $students = $this->processStudents($request->input('students'), $user, $isStudent);
             $directors = $this->processDirectors($request->input('directors'));
-            $sinodals = $isStudent ? [] : $this->processSinodals($request->input('sinodals'));
+            $sinodals = [];
+            if (!$isStudent) {
+                $sinodalsInput = $request->input('sinodals');
+                $sinodals = count($sinodalsInput) > 0 ? $this->processSinodals($sinodalsInput) : [];
+            }
 
             // Create protocol
             $protocol = $this->createProtocolRecord($request, $students['ids'], $directors['ids'], $sinodals['ids'] ?? []);
@@ -231,10 +235,20 @@ class ProtocolController extends Controller
                 $newProtocolRole->save();
             }
 
-            $protocolStatus = new ProtocolStatus();
-            $protocolStatus->protocol_id = $protocol->id;
-            $protocolStatus->comment = 'Protocolo creado por alumno';
-            $protocolStatus->save();
+            // if sinodals is empty array
+            if (!empty($sinodalIds)) {
+                $protocolStatus = new ProtocolStatus();
+                $protocolStatus->protocol_id = $protocol->id;
+                $protocolStatus->current_status = 'evaluatingFirst';
+                $protocolStatus->comment = 'Protocolo creado con sinodales';
+                $protocolStatus->save();
+            } else {
+                $protocolStatus = new ProtocolStatus();
+                $protocolStatus->protocol_id = $protocol->id;
+                $protocolStatus->comment = 'Protocolo creado sin sinodales';
+                $protocolStatus->save();
+            }
+
 
             DB::commit();
 
