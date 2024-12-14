@@ -660,11 +660,28 @@ class UsersController extends Controller
 
     public function getSelfEmail()
     {
-        $user = Auth::user();
+        $user = auth()->user();
+
         if (!$user) {
-            return response()->json(['message' => 'No se pudo obtener el correo del usuario'], 404);
+            return response()->json(['message' => 'User not found'], 404);
         }
-        return response()->json(['email' => $user->email], 200);
+
+        $userEmail = $user->email;
+        $userName = $user->staff ? $user->staff->name : $user->student->name;
+        $userLastName = $user->staff ? $user->staff->lastname : $user->student->lastname;
+        $userSecondLastName = $user->staff ? $user->staff->second_lastname : $user->student->second_lastname;
+
+        $response = [
+            'email' => $userEmail,
+            'name' => $userName,
+            'lastName' => $userLastName
+        ];
+
+        if ($userSecondLastName) {
+            $response['secondLastName'] = $userSecondLastName;
+        }
+
+        return response()->json($response, 200);
     }
 
     public function getAcademies(){

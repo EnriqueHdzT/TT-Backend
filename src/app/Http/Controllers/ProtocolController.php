@@ -18,6 +18,7 @@ use App\Models\Staff;
 use App\Models\Student;
 use App\Models\Protocol;
 use App\Models\ProtocolRole;
+use App\Models\ProtocolStatus;
 use App\Services\FileService;
 use Illuminate\Support\Facades\Auth;
 
@@ -45,11 +46,11 @@ class ProtocolController extends Controller
                 'title' => 'required|string',
                 'resume' => 'required|string',
                 'students' => 'required|array|min:1|max:4',
-                'students.*.email' => 'required|string|distinct',
+                'students.*.email' => 'required|string|email|distinct',
                 'directors' => 'required|array|min:1|max:2',
-                'directors.*.email' => 'required|string|distinct',
-                'sinodals' => 'array|min:3|max:3',
-                'sinodals.*.email' => 'string|distinct',
+                'directors.*.email' => 'required|string|email|distinct',
+                'sinodals' => 'array|min:0|max:3',
+                'sinodals.*.email' => 'string|email|distinct',
                 'term' => 'required|string',
                 'keywords' => 'required|array|min:1|max:4',
                 'pdf' => 'required|file|mimes:pdf|max:6144',
@@ -57,29 +58,63 @@ class ProtocolController extends Controller
 
             $user = Auth::user();
             $isStudent = $user->student;
+            $term = "";
 
             if ($isStudent) {
                 unset($rules['sinodals'], $rules['term']);
-                $request->replace($request->except(['term'])); // Quitar para evitar inyección de 'term' en el request
+                $request->replace($request->except(['term']));
+                $request->replace($request->except(['sinodals']));
+
+                $term = DatesAndTerms::latestActiveCycle();
+                if ($term == '') {
+                    return response()->json(['message' => 'No active term'], 400);
+                } else {
+                    $request->merge(['term' => $term]);
+                }
             } elseif (!in_array($user->staff->staff_type, ['AnaCATT', 'SecEjec', 'SecTec', 'Presidente'])) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
-            // Validate the request
+            // Validate the request body
             $validator = Validator::make($request->all(), $rules);
             if ($validator->fails()) {
                 return response()->json(['message' => $validator->errors()], 422);
             }
 
+            // Validate student don't have a protocol yet in this term
+            foreach ($request->input('students', []) as $studentInput) {
+                if (!isset($studentInput['email']) || empty($studentInput['email'])) {
+                    return response()->json(['message' => 'Each student must have a valid email.'], 400);
+                }
+
+                $user = User::where('email', $studentInput['email'])->first();
+
+                if ($user) {
+                    $student = $user->student;
+                    if ($student) {
+                        $termId = DatesAndTerms::where('cycle', $request->input('term'))->firstOrFail()->id;
+                        $protocol = $student->protocols()->where('period', $termId)->first();
+
+                        if ($protocol) {
+                            return response()->json(['message' => 'Student already has a protocol in this term'], 400);
+                        }
+                    }
+                }
+            }
+
             // Process participants
             $students = $this->processStudents($request->input('students'), $user, $isStudent);
             $directors = $this->processDirectors($request->input('directors'));
-            $sinodals = $isStudent ? [] : $this->processSinodals($request->input('sinodals'));
+            $sinodals = [];
+            if (!$isStudent) {
+                $sinodalsInput = $request->input('sinodals');
+                $sinodals = count($sinodalsInput) > 0 ? $this->processSinodals($sinodalsInput) : [];
+            }
 
             // Create protocol
             $protocol = $this->createProtocolRecord($request, $students['ids'], $directors['ids'], $sinodals['ids'] ?? []);
 
-            return response()->json(['message' => 'Protocol created successfully.', 'protocol' => $protocol], 201);
+            return response()->json(['protocol' => $protocol], 201);
         } catch (Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
@@ -98,10 +133,6 @@ class ProtocolController extends Controller
                 $newStudent = $this->createStudent($student);
                 $studentIds[] = $newStudent->id;
             }
-        }
-
-        if ($isStudent && ($students[0]['email'] ?? null) !== $user->email) {
-            throw new Exception('The first student must be the one making the request.');
         }
 
         return ['ids' => $studentIds];
@@ -154,11 +185,9 @@ class ProtocolController extends Controller
                 'keywords' => json_encode($request->input('keywords'))
             ]);
 
-            $requestTerm = $request->input('term');
-            if(!$requestTerm)
-                $requestTerm = DatesAndTerms::latestCycle();
 
-            $datesAndTerms = DatesAndTerms::where('cycle', $requestTerm)->firstOrFail();
+
+            $datesAndTerms = DatesAndTerms::where('cycle', $request->input('term'))->firstOrFail();
             $protocol->period = $datesAndTerms->id;
 
             [$year, $term] = explode('/', $datesAndTerms->cycle);
@@ -208,9 +237,24 @@ class ProtocolController extends Controller
                 $newProtocolRole->save();
             }
 
+            // if sinodals is empty array
+            if (!empty($sinodalIds)) {
+                $protocolStatus = new ProtocolStatus();
+                $protocolStatus->protocol_id = $protocol->id;
+                $protocolStatus->current_status = 'evaluatingFirst';
+                $protocolStatus->comment = 'Protocolo creado con sinodales';
+                $protocolStatus->save();
+            } else {
+                $protocolStatus = new ProtocolStatus();
+                $protocolStatus->protocol_id = $protocol->id;
+                $protocolStatus->comment = 'Protocolo creado sin sinodales';
+                $protocolStatus->save();
+            }
+
+
             DB::commit();
 
-            return $protocol;
+            return $protocol->id;
         } catch (Exception $e) {
             DB::rollBack();
             throw $e;

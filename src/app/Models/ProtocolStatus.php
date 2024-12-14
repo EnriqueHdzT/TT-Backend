@@ -12,9 +12,8 @@ class ProtocolStatus extends Model
     protected $fillable = [
         'protocol_id',
         'previous_status',
-        'new_status',
-        'comment',
-        'changed_at',
+        'current_status',
+        'comment'
     ];
 
     // Relationship to the protocol

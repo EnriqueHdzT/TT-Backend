@@ -50,18 +50,22 @@ class DatesAndTerms extends Model
         return $this->hasMany(Protocol::class, 'period');
     }
 
-    public static function latestCycle()
+    public static function latestActiveCycle(): string
     {
-        return self::orderByRaw("CAST(split_part(cycle, '/', 1) AS INTEGER) DESC")
-            ->orderByRaw("CAST(split_part(cycle, '/', 2) AS INTEGER) DESC")
-            ->first()
-            ->cycle;
+        $now = now();
 
-        //// Si se quiere obtener el ciclo más reciente que esté activo:
-        // return self::where('status', true)
-        //     ->orderByRaw("CAST(split_part(cycle, '/', 1) AS INTEGER) DESC")
-        //     ->orderByRaw("CAST(split_part(cycle, '/', 2) AS INTEGER) DESC")
-        //     ->first()
-        //     ->cycle;
+        return static::where('status', true)
+            ->where(function ($query) use ($now) {
+                $query->where([
+                    ['ord_start_update_protocols', '<=', $now],
+                    ['ord_end_update_protocols', '>=', $now],
+                ])->orWhere([
+                    ['ext_start_update_protocols', '<=', $now],
+                    ['ext_end_update_protocols', '>=', $now],
+                ]);
+            })
+            ->orderByRaw("CAST(split_part(cycle, '/', 1) AS INTEGER) DESC")
+            ->orderByRaw("CAST(split_part(cycle, '/', 2) AS INTEGER) DESC")
+            ->value('cycle') ?? '';
     }
 }
