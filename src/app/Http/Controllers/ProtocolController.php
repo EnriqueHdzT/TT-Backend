@@ -425,7 +425,7 @@ class ProtocolController extends Controller
         $user = Auth::user();
         $elementsPerPage = 9;
         $isStudent = $user->student;
-        $protocolsQuery = null;
+        $protocolsQuery = Protocol::with('status');
         $cycle = $request->cycle;
         $page = $request->page ?? 1;
         $searchBar = $request->searchBar;
@@ -475,13 +475,22 @@ class ProtocolController extends Controller
         }
 
         if ($orderBy) {
-            $protocolsQuery->orderByRaw("status = ? DESC", [$orderBy]);
+            $protocolsQuery->join('protocol_statuses', 'protocols.id', '=', 'protocol_statuses.protocol_id')
+                           ->orderByRaw("protocol_statuses.current_status = ? DESC", [$orderBy]);
         }
 
         $protocols = $protocolsQuery->paginate($elementsPerPage, ['*'], 'page', $page);
 
+        // Include current_status and previous_status in the response
+        $protocolsData = $protocols->map(function ($protocol) {
+            $protocolArray = $protocol->toArray();
+            $protocolArray['current_status'] = $protocol->status->current_status ?? null;
+            $protocolArray['previous_status'] = $protocol->status->previous_status ?? null;
+            return $protocolArray;
+        });
+
         return response()->json([
-            'protocols' => $protocols->items(),
+            'protocols' => $protocolsData,
             'current_page' => $protocols->currentPage(),
             'total_pages' => $protocols->lastPage(),
         ], 200);
