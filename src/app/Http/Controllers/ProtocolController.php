@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Academy;
 use App\Models\DatesAndTerms;
+use App\Models\ProtocolAcademy;
 use Illuminate\Http\Request;
 use Exception;
 use Illuminate\Support\Str;
@@ -52,7 +54,7 @@ class ProtocolController extends Controller
                 'keywords' => 'required|array|min:1|max:4',
                 'pdf' => 'required|file|mimes:pdf|max:6144',
             ];
-            
+
             $user = Auth::user();
             $isStudent = $user->student;
 
@@ -335,16 +337,16 @@ class ProtocolController extends Controller
         } else {
             $staff = $user->staff;
             switch ($staff->staff_type) {
-                case 'PresAcad': 
-                case 'JefeDepAcad': 
-                case 'SecEjec': 
-                case 'SecTec': 
+                case 'PresAcad':
+                case 'JefeDepAcad':
+                case 'SecEjec':
+                case 'SecTec':
                 case 'Presidente':
                 case 'AnaCATT':
                     $canAccess = true;
                     break;
-                
-                case 'Prof': 
+
+                case 'Prof':
                     $protocols = $staff->protocols;
                     if ($this->checkIfExists($protocol_id, $protocols)) {
                         $canAccess = true;
@@ -384,10 +386,10 @@ class ProtocolController extends Controller
         } else {
             $staff = $user->staff;
             switch ($staff->staff_type) {
-                case 'PresAcad': 
-                case 'JefeDepAcad': 
-                case 'SecEjec': 
-                case 'SecTec': 
+                case 'PresAcad':
+                case 'JefeDepAcad':
+                case 'SecEjec':
+                case 'SecTec':
                 case 'Presidente':
                 case 'AnaCATT':
                 case 'AnaCATT':
@@ -438,5 +440,40 @@ class ProtocolController extends Controller
             }
         }
         return false;
+    }
+
+    public function getProtocol($id){
+        $protocolo = Protocol::find($id);
+
+        if(!$protocolo){
+            return response()->json(['message' => 'Protocolo no encontrado'], 404);
+        }
+        return response()->json(['protocolo' => $protocolo], 200);
+    }
+
+    public function clasificarProtocolo(Request $request)
+    {
+        try {
+            // Validación de la solicitud
+            $validatedData = $request->validate([
+                'protocol_id' => 'required|uuid|exists:protocols,id',
+                'academia_id' => 'required|uuid|exists:academies,id', // Cambiar a 'academia_id'
+            ]);
+
+            // Mapear 'academia_id' al nombre interno 'academy_id'
+            $mappedData = [
+                'protocol_id' => $validatedData['protocol_id'],
+                'academy_id' => $validatedData['academia_id'], // Transformar 'academia_id' a 'academy_id'
+            ];
+
+            // Crear la relación entre protocolo y academia usando el modelo
+            ProtocolAcademy::create($mappedData);
+
+            // Respuesta en caso de éxito
+            return response()->json(['message' => 'Protocolo clasificado exitosamente.'], 200);
+        } catch (\Exception $e) {
+            // Capturar errores generales
+            return response()->json(['error' => 'Error al clasificar el protocolo: ' . $e->getMessage()], 500);
+        }
     }
 }

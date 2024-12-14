@@ -102,3 +102,8 @@ Route::get('/monitoreo/{id}', [MonitoreoController::class, 'getMonitoreo']);
 
 Route::post('/subir-imagen', [PublicacionesController::class, 'subirImagen']);
 Route::get('/ver-carpeta-drive', [PublicacionesController::class, 'verCarpetaDrive']);
+
+Route::get('/clasicar/{id}',[ProtocolController::class, 'getProtocol']);
+Route::get('/academias',[UsersController::class, 'getAcademies']);
+
+Route::post('/clasificarProtocolo',[ProtocolController::class, 'clasificarProtocolo']);
