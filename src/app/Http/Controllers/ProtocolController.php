@@ -357,6 +357,19 @@ class ProtocolController extends Controller
         return response()->json(['message' => 'Protocolo eliminado exitosamente'], 200);
     }
 
+    public function getQuestionare()
+    {
+        try {
+            $user = Auth::user();
+            if (!$user->staff) {
+                return response()->json(['message' => 'Acceso denegado'], 403);
+            }
+            return response()->json($this->fileService->getQuestionare(), 200);
+        } catch (Exception $e) {
+            return response()->json(['message' => 'Error'], 500);
+        }
+    }
+
     public function getProtocolDoc(Request $request, $protocol_id)
     {
         $protocol = Protocol::where('protocol_id', $protocol_id)->first();

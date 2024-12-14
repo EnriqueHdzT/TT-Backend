@@ -24,4 +24,22 @@ class FileService
 
         return Response::make($file, 200)->header("Content-Type", $type);
     }
+
+    public function getQuestionare()
+    {
+        $filePath = storage_path('app/public/questionare.json');
+        if (!File::exists($filePath)) {
+            return response()->json(['error' => 'File not found.'], 404);
+        }
+
+        $file = File::get($filePath);
+        $file = mb_convert_encoding($file, 'UTF-8', 'UTF-8');
+        $jsonData = json_decode($file, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return response()->json(['error' => 'Invalid JSON format.'], 500);
+        }
+
+        return $jsonData;
+    }
 }

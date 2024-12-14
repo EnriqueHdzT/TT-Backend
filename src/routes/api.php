@@ -64,7 +64,9 @@ Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function
     Route::post('/createProtocol', [ProtocolController::class, 'createProtocol']);
     Route::get('/getProtocolDoc/{id}', [ProtocolController::class, 'getProtocolDoc']);
     Route::get('/listProtocols', [ProtocolController::class, 'listProtocols']);
+    Route::get('/getQuestionare', [ProtocolController::class, 'getQuestionare']);    
 
+    
     // Academy routes
     Route::get('/academies', [AcademyController::class, 'getAllAcademies']);
 });
