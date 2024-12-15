@@ -450,6 +450,25 @@ class ProtocolController extends Controller
         }
     }
 
+    public function getProtocolDocByUUID(string $protocolId)
+    {
+        $protocol = Protocol::whereId($protocolId)->first();
+
+        if (!$protocol) {
+            return response()->json(['message' => 'Error'], 404);
+        }
+
+        $filePath = $protocol->pdf;
+
+        $user = Auth::user();
+        $canAccess = $user->protocolRoles()->where('protocol_id', $protocolId)->exists();
+        if ($canAccess) {
+            return $this->fileService->getFile($filePath);
+        }
+
+        return response()->json(['message' => 'No tienes permiso para acceder a este recurso'], 403);
+    }
+
     public function listProtocols(Request $request)
     {
         $user = Auth::user();
