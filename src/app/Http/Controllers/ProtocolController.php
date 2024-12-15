@@ -439,6 +439,7 @@ class ProtocolController extends Controller
             }
         } else {
             $staff = $user->staff;
+            $protocolsQuery = Protocol::query();
             switch ($staff->staff_type) {
                 case 'PresAcad':
                 case 'JefeDepAcad':
@@ -446,8 +447,7 @@ class ProtocolController extends Controller
                 case 'SecTec':
                 case 'Presidente':
                 case 'AnaCATT':
-                case 'AnaCATT':
-                    $protocolsQuery = Protocol::query();
+                    //$protocolsQuery = Protocol::query();
                     if ($cycle && $cycle != 'Todos') {
                         $protocolsQuery->whereHas('datesAndTerms', function ($query) use ($cycle) {
                             $query->where('cycle', $cycle);
@@ -456,12 +456,17 @@ class ProtocolController extends Controller
                     break;
 
                 case 'Prof':
-                    $protocolsQuery = $staff->protocols();
+                    //$protocolsQuery = $staff->protocols();
                     if ($cycle && $cycle != 'Todos') {
                         $protocolsQuery->whereHas('datesAndTerms', function ($query) use ($cycle) {
                             $query->where('cycle', $cycle);
                         });
                     }
+
+                    // Filter protocols with current_status of 'classifying'
+                    $protocolsQuery->whereHas('status', function ($query) {
+                        $query->where('current_status', 'selecting');
+                    });
                     break;
             }
         }
@@ -473,10 +478,10 @@ class ProtocolController extends Controller
             });
         }
 
-        if ($orderBy) {
-            $protocolsQuery->join('protocol_statuses', 'protocols.id', '=', 'protocol_statuses.protocol_id')
-                           ->orderByRaw("protocol_statuses.current_status = ? DESC", [$orderBy]);
-        }
+        // if ($orderBy) {
+        //     $protocolsQuery->join('protocol_statuses', 'protocols.id', '=', 'protocol_statuses.protocol_id')
+        //                    ->orderByRaw("protocol_statuses.current_status = ? DESC", [$orderBy]);
+        // }
 
         $protocols = $protocolsQuery->paginate($elementsPerPage, ['*'], 'page', $page);
 
