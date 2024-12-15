@@ -2,55 +2,47 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Evaluation extends Model
 {
-    use HasFactory;
+    // Disable the auto-incrementing ID
+    public $incrementing = false;
 
-    /**
-     * The table associated with the model.
-     *
-     * @var string
-     */
+    // Specify the primary key as a composite key
+    protected $primaryKey = ['protocol_id', 'sinodal_id'];
+
+    // Define the table name explicitly (optional, if different from 'evaluations')
     protected $table = 'evaluations';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
+    // Set the key type to string since `protocol_id` and `sinodal_id` are UUIDs
+    protected $keyType = 'string';
+
+    // Specify the attributes that are mass assignable
     protected $fillable = [
         'protocol_id',
         'sinodal_id',
-        'status',
         'current_status',
         'evaluation_response',
     ];
 
-    /**
-     * The default attributes for the model.
-     *
-     * @var array
-     */
-    protected $attributes = [
-        'status' => 'pending',
+    // Ensure that `evaluation_response` is cast to an array for easier handling
+    protected $casts = [
+        'evaluation_response' => 'array',
     ];
 
-    /**
-     * Relationships.
-     */
+    // Disable timestamps if not needed
+    public $timestamps = true;
 
-    // Evaluation belongs to a protocol
-    public function protocol()
+    // Override the `getKey` method to handle composite keys
+    public function getKey()
     {
-        return $this->belongsTo(Protocol::class);
+        return $this->getAttribute('protocol_id') . '-' . $this->getAttribute('sinodal_id');
     }
 
-    // Evaluation is created by a sinodal (user)
-    public function sinodal()
+    // Disable Laravel's automatic primary key handling
+    public function getKeyName()
     {
-        return $this->belongsTo(User::class, 'sinodal_id');
+        return null;
     }
 }

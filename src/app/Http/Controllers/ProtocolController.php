@@ -17,6 +17,7 @@ use App\Models\Student;
 use App\Models\Protocol;
 use App\Models\ProtocolRole;
 use App\Models\ProtocolStatus;
+use App\Models\Evaluation;
 use App\Services\FileService;
 use Illuminate\Support\Facades\Auth;
 
@@ -452,6 +453,7 @@ class ProtocolController extends Controller
 
     public function getProtocolDocByUUID(string $protocolId)
     {
+        $canAccess = false;
         $protocol = Protocol::whereId($protocolId)->first();
 
         if (!$protocol) {
@@ -461,7 +463,11 @@ class ProtocolController extends Controller
         $filePath = $protocol->pdf;
 
         $user = Auth::user();
-        $canAccess = $user->protocolRoles()->where('protocol_id', $protocolId)->exists();
+        $protocolRole = $user->protocolRoles->where('protocol_id', $protocolId);
+        if ($protocolRole[0]) {
+            $canAccess = true;
+        }
+
         if ($canAccess) {
             return $this->fileService->getFile($filePath);
         }
@@ -544,5 +550,97 @@ class ProtocolController extends Controller
             }
         }
         return false;
+    }
+
+    public function getDataForEvaluation($id)
+    {
+        $canAccess = false;
+        $protocol = Protocol::whereId($id)->first();
+
+        if (!$protocol) {
+            return response()->json(['message' => 'Error'], 404);
+        }
+
+        $user = Auth::user();
+
+        $protocolRole = $user->protocolRoles->where('protocol_id', $id);
+        if ($protocolRole[0]) {
+            $canAccess = true;
+        }
+
+        if ($canAccess) {
+            $reply = [
+                'protocol_id' => $protocol->protocol_id,
+            ];
+            return response()->json($reply, 200);
+        }
+
+        return response()->json(['message' => 'No tienes permiso para acceder a este recurso'], 403);
+    }
+
+    public function evaluateProtocol(Request $request, $id)
+    {
+        $user = Auth::user();
+
+        $protocol = Protocol::whereId($id)->first();
+        $protocolStatus = ProtocolStatus::where('protocol_id', $id)->first();
+        $protocolRole = $user->protocolRoles->where('protocol_id', $id)->where('role', 'sinodal')->first();
+        if (!$protocolRole && ($protocolStatus->current_status != 'evaluatingFirst' || $protocolStatus->current_status != 'evaluatingSecond')) {
+            return response()->json(['message' => 'Acceso denegado'], 403);
+        }
+
+        $evaluation = $protocol->evaluations->where('user_id', $user->id)->first();
+        $evalResult = $request->input('Aprobado')['validation'];
+
+        if (!$evaluation || $evaluation->current_status == 'pending') {
+            $newEvaluation = new Evaluation();
+            $newEvaluation->protocol_id = $id;
+            $newEvaluation->sinodal_id = $user->id;
+            $newEvaluation->evaluation_response = $request->json()->all();
+
+            if ($evalResult) {
+                $protocolStatus->previous_status = $protocolStatus->current_status;
+                $protocolStatus->current_status = 'active';
+                $newEvaluation->current_status = 'approved';
+                $newEvaluation->save();
+                $protocolStatus->save();
+            } else {
+                $protocolStatus->previous_status = $protocolStatus->current_status;
+                $protocolStatus->current_status = 'correcting';
+                $newEvaluation->current_status = 'rejected';
+                $newEvaluation->save();
+                $protocolStatus->save();
+            }
+        } else {
+            $evaluation->evaluation_response = $request->json()->all();
+
+            if ($evalResult) {
+                $protocolStatus->previous_status = $protocolStatus->current_status;
+                $protocolStatus->current_status = 'active';
+                $evaluation->current_status = 'approved';
+                $evaluation->save();
+                $protocolStatus->save();
+            } else {
+                $protocolStatus->previous_status = $protocolStatus->current_status;
+                $protocolStatus->current_status = 'canceled';
+                $evaluation->current_status = 'rejected';
+                $evaluation->save();
+                $protocolStatus->save();
+            }
+        }
+
+        return response()->json(['message' => 'Protocolo evaluado correctamente'], 200);
+    }
+
+    public function getProtocolEvaluation(Request $request)
+    {
+        $protocolId = $request->input('id');
+        $sinodalId = $request->input('sinodal_id');
+        $evaluation = Evaluation::where('protocol_id', $protocolId)->where('sinodal_id', $sinodalId)->first();
+        if (!$evaluation) {
+            return response()->json(['message' => 'No se encontró la evaluación'], 404);
+        }
+
+        return response()->json($evaluation->evaluation_response, 200);
     }
 }
