@@ -251,7 +251,6 @@ class ProtocolController extends Controller
                 $protocolStatus->save();
             }
 
-
             DB::commit();
 
             return $protocol->id;
@@ -289,8 +288,6 @@ class ProtocolController extends Controller
         $staff->save();
         return $staff;
     }
-
-
 
     public function readProtocol($id)
     {
@@ -529,17 +526,35 @@ class ProtocolController extends Controller
             // Mapear 'academia_id' al nombre interno 'academy_id'
             $mappedData = [
                 'protocol_id' => $validatedData['protocol_id'],
-                'academy_id' => $validatedData['academia_id'], // Transformar 'academia_id' a 'academy_id'
+                'academy_id' => $validatedData['academia_id'],
             ];
 
             // Crear la relación entre protocolo y academia usando el modelo
             ProtocolAcademy::create($mappedData);
 
+            // Cambiar el estado del protocolo en ProtocolStatus
+            $protocolStatus = ProtocolStatus::where('protocol_id', $validatedData['protocol_id'])->first();
+
+            if ($protocolStatus) {
+                // Guardar el estado anterior antes de cambiarlo
+                $protocolStatus->previous_status = $protocolStatus->current_status;
+
+                // Cambiar el estado actual
+                $protocolStatus->current_status = 'classifying'; // El nuevo estado deseado
+                $protocolStatus->comment = 'Protocolo clasificado exitosamente en academia'; // Comentario opcional
+                $protocolStatus->save(); // Guardar cambios
+
+            } else {
+                // Si no se encuentra un registro de status:
+                return response()->json(['error' => 'Estado del protocolo no encontrado'], 404);
+            }
+
             // Respuesta en caso de éxito
-            return response()->json(['message' => 'Protocolo clasificado exitosamente.'], 200);
+            return response()->json(['message' => 'Protocolo clasificado exitosamente y el estado ha sido actualizado.'], 200);
         } catch (\Exception $e) {
             // Capturar errores generales
             return response()->json(['error' => 'Error al clasificar el protocolo: ' . $e->getMessage()], 500);
         }
     }
+
 }
