@@ -370,7 +370,37 @@ class ProtocolController extends Controller
         }
     }
 
-    public function getProtocolDoc(Request $request, $protocol_id)
+    public function allowedEvaluation($protocolId)
+    {
+        $user = Auth::user();
+
+        $protocol = Protocol::find($protocolId);
+        if (!$protocol) {
+            return response()->json(['message' => 'Protocol not found'], 404);
+        }
+
+        $protocolStatus = $protocol->statusHistories[0];
+        if (!in_array($protocolStatus->current_status, ['evaluatingFirst', 'correcting', 'evaluatingSecond', 'active', 'canceled'])) {
+            return response()->json(['message' => 'Not allowed'], 403);
+        }
+
+        $protocolRole = $user->protocolRoles->where('protocol_id', $protocolId)->first();
+        if (!$protocolRole) {
+            return response()->json(['message' => 'Not allowed'], 403);
+        }
+
+        $permissions = match (true) {
+            ($protocolRole->role === 'sinodal' && in_array($protocolStatus->current_status, ['evaluatingFirst', 'evaluatingSecond'])) => 'write',
+            ($protocolRole->role === 'student' && in_array($protocolStatus->current_status, ['correcting', 'evaluatingSecond', 'canceled', 'active'])) => 'read',
+            ($protocolRole->role === 'director' && in_array($protocolStatus->current_status, ['correcting', 'evaluatingSecond', 'canceled', 'active'])) => 'read',
+            default => 'not allowed',
+        };
+
+
+        return response()->json(['permissions' => $permissions], 200);
+    }
+
+    public function getProtocolDoc($protocol_id)
     {
         $protocol = Protocol::where('protocol_id', $protocol_id)->first();
 
