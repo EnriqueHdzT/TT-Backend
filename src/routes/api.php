@@ -114,4 +114,4 @@ Route::get('/clasicar/{id}',[ProtocolController::class, 'getProtocol']);
 Route::get('/academias',[UsersController::class, 'getAcademies']);
 
 Route::post('/clasificarProtocolo',[ProtocolController::class, 'clasificarProtocolo']);
-Route::post('/selectProtocol',[ProtocolController::class, 'selectProtocol']);
+Route::get('/selectProtocol/{id}',[ProtocolController::class, 'selectProtocol']);

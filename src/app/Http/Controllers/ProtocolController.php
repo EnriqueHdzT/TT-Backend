@@ -344,10 +344,11 @@ class ProtocolController extends Controller
         }
     }
 
-    public function getProtocol($protocol_id){
+    public function getProtocol($protocol_id)
+    {
         $protocolo = Protocol::where('protocol_id', $protocol_id)->first();
 
-        if(!$protocolo){
+        if (!$protocolo) {
             return response()->json(['message' => 'Protocolo no encontrado'], 404);
         }
         return response()->json($protocolo, 200);
@@ -539,25 +540,26 @@ class ProtocolController extends Controller
         return response()->json(['permissions' => $permissions], 200);
     }
 
-    public function validateProtocol($protocol_id){
-        if(!$protocol_id){
+    public function validateProtocol($protocol_id)
+    {
+        if (!$protocol_id) {
             return response()->json(['message' => 'Protocolo no encontrado'], 404);
         }
-        
+
         $protocol = Protocol::where('protocol_id', $protocol_id)->first();
-        if(!$protocol){
+        if (!$protocol) {
             return response()->json(['message' => 'Protocolo no encontrado'], 404);
         }
         $user = Auth::user();
         $staff = $user->staff;
 
-        if(!$staff || !in_array($staff->staff_type, ['AnaCATT', 'SecEjec'])){
+        if (!$staff || !in_array($staff->staff_type, ['AnaCATT', 'SecEjec'])) {
             return response()->json(['message' => 'No tienes permiso para acceder a este recurso'], 403);
         }
 
         $protocolStatus = ProtocolStatus::where('protocol_id', $protocol->id)->first();
 
-        if($protocolStatus->current_status != 'validating'){ // Si ya tiene un status diferente de validating
+        if ($protocolStatus->current_status != 'validating') { // Si ya tiene un status diferente de validating
             return response()->json(['message' => 'El protocolo ya está validado'], 403);
         }
 
@@ -619,11 +621,11 @@ class ProtocolController extends Controller
     }
 
 
-  public function getProDoc(Request $request, $protocol_id)
+    public function getProDoc(Request $request, $protocol_id)
     {
-  
         $protocol = Protocol::where('id', $protocol_id)->first();
-  if (!$protocol) {
+        return $protocol;
+        if (!$protocol) {
             return response()->json(['message' => 'Error'], 404);
         }
         $protocolPath = $protocol->pdf; // descomentar cuando exista la columna
@@ -667,12 +669,12 @@ class ProtocolController extends Controller
             );
         }
     }
-  
+
     public function getProtocolDocByUUID(string $protocolId)
     {
         $canAccess = false;
         $protocol = Protocol::whereId($protocolId)->first();
-  if (!$protocol) {
+        if (!$protocol) {
             return response()->json(['message' => 'Error'], 404);
         }
         $filePath = $protocol->pdf;
@@ -786,15 +788,23 @@ class ProtocolController extends Controller
         try {
             // Validación de la solicitud
             $validatedData = $request->validate([
-                'protocol_id' => 'required|uuid|exists:protocols,id',
+                'protocol_id' => 'required|string|exists:protocols,id',
                 'academia_id' => 'required|uuid|exists:academies,id', // Cambiar a 'academia_id'
             ]);
 
+            
+
             // Mapear 'academia_id' al nombre interno 'academy_id'
             $mappedData = [
-                'protocol_id' => $validatedData['protocol_id'],
                 'academy_id' => $validatedData['academia_id'],
             ];
+
+            $protocol = Protocol::where('protocol_id', $validatedData['protocol_id'])->first();
+
+            $mappedData['protocol_id'] = $protocol->id;
+            if (!$protocol) {
+                return response()->json(['error' => 'Protocolo no encontrado'], 404);
+            }
 
             // Crear la relación entre protocolo y academia usando el modelo
             ProtocolAcademy::create($mappedData);
@@ -807,7 +817,7 @@ class ProtocolController extends Controller
                 $protocolStatus->previous_status = $protocolStatus->current_status;
 
                 // Cambiar el estado actual
-                $protocolStatus->current_status = 'classifying'; // El nuevo estado deseado
+                $protocolStatus->current_status = 'selecting'; // El nuevo estado deseado
                 $protocolStatus->comment = 'Protocolo clasificado exitosamente en academia'; // Comentario opcional
                 $protocolStatus->save(); // Guardar cambios
 
@@ -824,49 +834,31 @@ class ProtocolController extends Controller
         }
     }
 
-    public function selectProtocol(Request $request)
+    public function selectProtocol($id)
     {
-        // Validar los datos recibidos
-        $validator = Validator::make($request->all(), [
-            'protocol_id' => 'required|exists:protocols,id',
-            'user_id' => 'required|exists:users,id',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Datos inválidos.',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
+        $protocol = Protocol::findOrFail($id);
+        $user = Auth::user();
 
         try {
             // Crear o actualizar el registro
-            $protocolRole = ProtocolRole::updateOrCreate(
-                [
-                    'protocol_id' => $request->protocol_id,
-                    'user_id' => $request->user_id,
-                ],
-                [
-                    'role' => 'sinodal',
-                ]
-            );
+            $protocolRole = new ProtocolRole();
+            $protocolRole->protocol_id = $protocol->id;
+            $protocolRole->user_id = $user->id;
+            $protocolRole->role = 'sinodal';
+            $protocolRole->save();
 
             return response()->json([
-                'success' => true,
-                'message' => 'Rol de sinodal asignado correctamente.',
-                'data' => $protocolRole,
+                'message' => 'Rol de sinodal asignado exitosamente.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
-                'success' => false,
-                'message' => 'Error al asignar el rol de sinodal.',
-                'error' => $e->getMessage(),
+                'message' => 'Error al asignar rol de sinodal: ' . $e->getMessage(),
             ], 500);
         }
     }
     public function getDataForEvaluation($id)
     {
+        return $id;
         $canAccess = false;
         $protocol = Protocol::whereId($id)->first();
 
