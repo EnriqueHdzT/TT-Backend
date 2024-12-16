@@ -343,6 +343,15 @@ class ProtocolController extends Controller
         }
     }
 
+    public function getProtocol($protocol_id){
+        $protocolo = Protocol::where('protocol_id', $protocol_id)->first();
+
+        if(!$protocolo){
+            return response()->json(['message' => 'Protocolo no encontrado'], 404);
+        }
+        return response()->json($protocolo, 200);
+    }
+
     public function readProtocol($id)
     {
         $protocol = Protocol::find($id);
@@ -529,6 +538,35 @@ class ProtocolController extends Controller
         return response()->json(['permissions' => $permissions], 200);
     }
 
+    public function validateProtocol($protocol_id){
+        if(!$protocol_id){
+            return response()->json(['message' => 'Protocolo no encontrado'], 404);
+        }
+        
+        $protocol = Protocol::where('protocol_id', $protocol_id)->first();
+        if(!$protocol){
+            return response()->json(['message' => 'Protocolo no encontrado'], 404);
+        }
+        $user = Auth::user();
+        $staff = $user->staff;
+
+        if(!$staff || !in_array($staff->staff_type, ['AnaCATT', 'SecEjec'])){
+            return response()->json(['message' => 'No tienes permiso para acceder a este recurso'], 403);
+        }
+
+        $protocolStatus = ProtocolStatus::where('protocol_id', $protocol->id)->first();
+
+        if($protocolStatus->current_status != 'validating'){ // Si ya tiene un status diferente de validating
+            return response()->json(['message' => 'El protocolo ya está validado'], 403);
+        }
+
+        $protocolStatus->previous_status = $protocolStatus->current_status;
+        $protocolStatus->current_status = 'classifying';
+        $protocolStatus->save();
+
+        return response()->json(['message' => 'Protocolo validado'], 200);
+    }
+
     public function getProtocolDoc($protocol_id)
     {
         $protocol = Protocol::where('protocol_id', $protocol_id)->first();
@@ -608,7 +646,7 @@ class ProtocolController extends Controller
         $user = Auth::user();
         $elementsPerPage = 9;
         $isStudent = $user->student;
-        $protocolsQuery = null;
+        $protocolsQuery = Protocol::with('status');
         $cycle = $request->cycle;
         $page = $request->page ?? 1;
         $searchBar = $request->searchBar;
@@ -623,6 +661,7 @@ class ProtocolController extends Controller
             }
         } else {
             $staff = $user->staff;
+            $protocolsQuery = Protocol::query();
             switch ($staff->staff_type) {
                 case 'PresAcad':
                 case 'JefeDepAcad':
@@ -630,8 +669,7 @@ class ProtocolController extends Controller
                 case 'SecTec':
                 case 'Presidente':
                 case 'AnaCATT':
-                case 'AnaCATT':
-                    $protocolsQuery = Protocol::query();
+                    //$protocolsQuery = Protocol::query();
                     if ($cycle && $cycle != 'Todos') {
                         $protocolsQuery->whereHas('datesAndTerms', function ($query) use ($cycle) {
                             $query->where('cycle', $cycle);
@@ -640,12 +678,17 @@ class ProtocolController extends Controller
                     break;
 
                 case 'Prof':
-                    $protocolsQuery = $staff->protocols();
+                    //$protocolsQuery = $staff->protocols();
                     if ($cycle && $cycle != 'Todos') {
                         $protocolsQuery->whereHas('datesAndTerms', function ($query) use ($cycle) {
                             $query->where('cycle', $cycle);
                         });
                     }
+
+                    // Filter protocols with current_status of 'classifying'
+                    $protocolsQuery->whereHas('status', function ($query) {
+                        $query->where('current_status', 'selecting');
+                    });
                     break;
             }
         }
@@ -657,14 +700,23 @@ class ProtocolController extends Controller
             });
         }
 
-        if ($orderBy) {
-            $protocolsQuery->orderByRaw("status = ? DESC", [$orderBy]);
-        }
+        // if ($orderBy) {
+        //     $protocolsQuery->join('protocol_statuses', 'protocols.id', '=', 'protocol_statuses.protocol_id')
+        //                    ->orderByRaw("protocol_statuses.current_status = ? DESC", [$orderBy]);
+        // }
 
         $protocols = $protocolsQuery->paginate($elementsPerPage, ['*'], 'page', $page);
 
+        // Include current_status and previous_status in the response
+        $protocolsData = $protocols->map(function ($protocol) {
+            $protocolArray = $protocol->toArray();
+            $protocolArray['current_status'] = $protocol->status->current_status ?? null;
+            $protocolArray['previous_status'] = $protocol->status->previous_status ?? null;
+            return $protocolArray;
+        });
+
         return response()->json([
-            'protocols' => $protocols->items(),
+            'protocols' => $protocolsData,
             'current_page' => $protocols->currentPage(),
             'total_pages' => $protocols->lastPage(),
         ], 200);
