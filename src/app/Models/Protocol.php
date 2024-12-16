@@ -28,6 +28,7 @@ class Protocol extends Model
         'created_at',
         'updated_at',
         'pdf',
+        'pivot'
     ];
 
     public function students()
@@ -58,5 +59,10 @@ class Protocol extends Model
     public function statusHistories()
     {
         return $this->hasMany(ProtocolStatus::class);
+    }
+
+    public function status()
+    {
+        return $this->hasOne(ProtocolStatus::class, 'protocol_id');
     }
 }
