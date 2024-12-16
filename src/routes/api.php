@@ -66,6 +66,7 @@ Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function
     Route::get('/getEvalProtData/{id}', [ProtocolController::class, 'getDataForEvaluation']);
     Route::post('/evaluateProtocol/{id}', [ProtocolController::class, 'evaluateProtocol']);
     Route::post('/getResponses', [ProtocolController::class, 'getProtocolEvaluation']);
+    Route::get('/monitoreo/{id}', [ProtocolController::class, 'getMonitorData']);
     
     // Academy routes
     Route::get('/academies', [AcademyController::class, 'getAllAcademies']);
@@ -99,8 +100,6 @@ Route::get('/pregunta', [PublicacionesController::class, 'getPreguntas']);
 Route::get('/pregunta/{id}', [PublicacionesController::class, 'getPreguntaID']);
 Route::put('/pregunta/{id}', [PublicacionesController::class, 'updatePregunta']);
 Route::delete('/pregunta/{id}', [PublicacionesController::class, 'deletePregunta']);
-
-Route::get('/monitoreo/{id}', [MonitoreoController::class, 'getMonitoreo']);
 
 Route::post('/subir-imagen', [PublicacionesController::class, 'subirImagen']);
 Route::get('/ver-carpeta-drive', [PublicacionesController::class, 'verCarpetaDrive']);

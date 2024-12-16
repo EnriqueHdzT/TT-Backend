@@ -773,4 +773,43 @@ class ProtocolController extends Controller
 
         return response()->json($evaluation->evaluation_response, 200);
     }
+
+    public function getMonitorData($id)
+    {
+        $protocol = Protocol::where('protocol_id', $id)->first();
+
+        if (!$protocol) {
+            return response()->json(['message' => 'Protocolo no encontrado'], 404);
+        }
+
+        $response = [];
+        $protocolStatus = $protocol->statusHistories[0];
+
+        $response['current_status'] = $protocolStatus->current_status;
+        $response['previous_status'] = $protocolStatus->previous_status;
+
+        if ($protocolStatus->current_status === 'selecting') {
+            $response['sinodals_count'] = ProtocolRole::where('protocol_id', $protocol->id)->where('role', 'sinodal')->count();
+        }
+        if ($protocolStatus->current_status === 'evaluatingFirst' || $protocolStatus->current_status === 'evaluatingSecond') {
+            $response['evaluations_count'] = Evaluation::where('protocol_id', $protocol->id)->where('current_status', ['approved', 'rejected'])->count();
+        }
+        if ($protocolStatus->current_status === 'active' || $protocolStatus->current_status === 'canceled' || $protocolStatus->current_status === 'correcting') {
+            $evaluations = Evaluation::where('protocol_id', $protocol->id)->where('current_status', ['approved', 'rejected'])->get();
+            if ($evaluations) {
+                foreach ($evaluations as $evaluation) {
+                    $user = User::where('id', $evaluation->sinodal_id)->first();
+                    $staff = $user->staff;
+                    $response['evaluations'][$staff->id] = [
+                        'name' => $staff->name,
+                        'lastname' => $staff->lastname,
+                        'second_lastname' => $staff->second_lastname,
+                        'result' => $evaluation->current_status
+                    ];
+                }
+            }
+        }
+
+        return response()->json($response, 200);
+    }
 }
