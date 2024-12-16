@@ -11,8 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('protocol_status', function (Blueprint $table) {
-            $table->uuid('protocol_id')->index()->primary();
+        Schema::create('protocol_statuses', function (Blueprint $table) {
+            $table->id();
+            $table->uuid('protocol_id')->index();
             $table->enum('previous_status', ['', 'validating', 'classifying', 'selecting', 'evaluatingFirst', 'correcting', 'evaluatingSecond', 'active'])->default('');
             $table->enum('current_status', ['validating', 'classifying', 'selecting', 'evaluatingFirst', 'correcting', 'evaluatingSecond', 'active', 'canceled'])->default('validating');
             $table->text('comment')->default('');
