@@ -666,7 +666,9 @@ class ProtocolController extends Controller
                 403
             );
         }
-  public function getProtocolDocByUUID(string $protocolId)
+    }
+  
+    public function getProtocolDocByUUID(string $protocolId)
     {
         $canAccess = false;
         $protocol = Protocol::whereId($protocolId)->first();
@@ -779,15 +781,6 @@ class ProtocolController extends Controller
         return false;
     }
 
-    public function getProtocol($id){
-        $protocolo = Protocol::find($id);
-
-        if(!$protocolo){
-            return response()->json(['message' => 'Protocolo no encontrado'], 404);
-        }
-        return response()->json(['protocolo' => $protocolo], 200);
-    }
-
     public function clasificarProtocolo(Request $request)
     {
         try {
@@ -871,6 +864,7 @@ class ProtocolController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
     public function getDataForEvaluation($id)
     {
         $canAccess = false;
