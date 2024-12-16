@@ -346,7 +346,7 @@ class ProtocolController extends Controller
 
     public function getProtocol($protocol_id)
     {
-        $protocolo = Protocol::where('protocol_id', $protocol_id)->first();
+        $protocolo = Protocol::where('id', $protocol_id)->first();
 
         if (!$protocolo) {
             return response()->json(['message' => 'Protocolo no encontrado'], 404);
@@ -634,7 +634,7 @@ class ProtocolController extends Controller
         $isStudent = $user->student;
         $canAccess = false;
 
-        if ($isStudent) {
+        if ($isStudent ) {
             $protocols = $user->student->protocols;
             if ($this->checkIfExists($protocol_id, $protocols)) {
                 $canAccess = true;
@@ -642,8 +642,6 @@ class ProtocolController extends Controller
         } else {
             $staff = $user->staff;
             switch ($staff->staff_type) {
-                case 'PresAcad':
-                case 'JefeDepAcad':
                 case 'SecEjec':
                 case 'SecTec':
                 case 'Presidente':
@@ -788,7 +786,7 @@ class ProtocolController extends Controller
         try {
             // Validación de la solicitud
             $validatedData = $request->validate([
-                'protocol_id' => 'required|string|exists:protocols,id',
+                'protocol_id' => 'required|uuid|exists:protocols,id',
                 'academia_id' => 'required|uuid|exists:academies,id', // Cambiar a 'academia_id'
             ]);
 
@@ -797,9 +795,8 @@ class ProtocolController extends Controller
             // Mapear 'academia_id' al nombre interno 'academy_id'
             $mappedData = [
                 'academy_id' => $validatedData['academia_id'],
+                'protocol_id' => $validatedData['protocol_id'],
             ];
-
-            $protocol = Protocol::where('protocol_id', $validatedData['protocol_id'])->first();
 
             $mappedData['protocol_id'] = $protocol->id;
             if (!$protocol) {
