@@ -19,7 +19,9 @@ use App\Models\ProtocolRole;
 use App\Models\ProtocolStatus;
 use App\Models\Evaluation;
 use App\Services\FileService;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class ProtocolController extends Controller
 {
@@ -207,10 +209,7 @@ class ProtocolController extends Controller
             $protocol_id = sprintf('%s%03d', $prefix, $nextNumber);
             $pdf = $request->file('pdf');
             if ($pdf) {
-                $protocol->fill([
-                    'pdf' => $pdf->store("uploads/{$protocol_id}"),
-                    'protocol_id' => $protocol_id
-                ]);
+                $protocol->pdf = $pdf->store("uploads/{$protocol_id}");
             }
             $protocol->save();
 
@@ -289,7 +288,56 @@ class ProtocolController extends Controller
         return $staff;
     }
 
+    public function getProtocolData(string $id)
+    {
+        $user = Auth::user();
 
+        try {
+            $protocol = Protocol::findOrFail($id);
+            $term = DatesAndTerms::findOrFail($protocol->period);
+
+            $protocolData = [
+                'title' => $protocol->title,
+                'resume' => $protocol->resume,
+                'students' => [],
+                'directors' => [],
+                'sinodals' => [],
+                'term' => $term->cycle,
+                'keywords' => json_decode($protocol->keywords) ?? [],
+            ];
+
+            foreach ($protocol->students as $student) {
+                $protocolData['students'][] = [
+                    'email' => $student->person->email,
+                    'name' => $student->person->student->name,
+                    'lastname' => $student->person->student->lastname,
+                    'second_lastname' => $student->person->student->second_lastname ?? null,
+                ];
+            }
+
+            foreach ($protocol->directors as $director) {
+                $protocolData['directors'][] = [
+                    'email' => $director->person->email,
+                    'name' => $director->person->staff->name,
+                    'lastname' => $director->person->staff->lastname,
+                    'second_lastname' => $director->person->staff->second_lastname ?? null,
+                ];
+            }
+
+            foreach ($protocol->sinodals as $sinodal) {
+                $protocolData['sinodals'][] = [
+                    'email' => $sinodal->person->email,
+                    'name' => $sinodal->person->staff->name,
+                    'lastname' => $sinodal->person->staff->lastname,
+                    'second_lastname' => $sinodal->person->staff->second_lastname ?? null,
+                ];
+            }
+
+            return response()->json($protocolData, 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Protocolo no encontrado'], 404);
+        }
+    }
 
     public function readProtocol($id)
     {
@@ -322,28 +370,37 @@ class ProtocolController extends Controller
 
     public function updateProtocol(Request $request, $id)
     {
-        $request->validate([
-            'title_protocol' => 'required|string',
-            'student_id' => 'required|string|unique:students,student_id',
-            'staff_id' => 'required|string|unique:staff,staff_id',
-            'keywords' => 'required|string',
-            'protocol_doc' => 'required|binary',
-        ]);
+        try {
+            $protocol = Protocol::findOrFail($id);
+            $currentTerm = DatesAndTerms::where('id', $protocol->period)->firstorFail()->cycle;
+            if ($request->title !== null) {
+                $protocol->title = $request->title;
+            }
+            if ($request->resume !== null) {
+                $protocol->resume = $request->resume;
+            }
+            if ($request->keywords !== null) {
+                $protocol->keywords = json_encode($request->keywords);
+            }
+            if ($request->term !== null) {
 
-        $protocol = Protocol::find($id);
+                $protocol->period = $term->id;
+            }
+            if ($request->pdf !== null) {
+                Storage::delete($protocol->pdf);
+                $pdf = $request->file('pdf');
+                if ($pdf) {
+                    $protocol->fill([
+                        'pdf' => $pdf->store("uploads/{$protocol->id}"),
 
-        if (!$protocol) {
+                    ]);
+                }
+            }
+            $protocol->save();
+            return response()->json(['message' => 'Protocolo actualizado exitosamente'], 200);
+        } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Protocolo no encontrado'], 404);
         }
-
-        $protocol->title_protocol = $request->title_protocol;
-        $protocol->student_ID = $request->student_ID;
-        $protocol->staff_ID = $request->staff_ID;
-        $protocol->keywords = $request->keywords;
-        $protocol->protocol_doc = $request->protocol_doc;
-        $protocol->save();
-
-        return response()->json(['message' => 'Datos del protocolo cargados exitosamente'], 200);
     }
 
     public function deleteProtocol($id)
@@ -597,40 +654,42 @@ class ProtocolController extends Controller
             $newEvaluation->protocol_id = $id;
             $newEvaluation->sinodal_id = $user->id;
             $newEvaluation->evaluation_response = $request->json()->all();
-
-            if ($evalResult) {
-                $protocolStatus->previous_status = $protocolStatus->current_status;
-                $protocolStatus->current_status = 'active';
-                $newEvaluation->current_status = 'approved';
-                $newEvaluation->save();
-                $protocolStatus->save();
-            } else {
-                $protocolStatus->previous_status = $protocolStatus->current_status;
-                $protocolStatus->current_status = 'correcting';
-                $newEvaluation->current_status = 'rejected';
-                $newEvaluation->save();
-                $protocolStatus->save();
-            }
+            $newEvaluation->current_status = $evalResult ? 'approved' : 'rejected';
+            $newEvaluation->save();
         } else {
             $evaluation->evaluation_response = $request->json()->all();
+            $evaluation->current_status = $evalResult ? 'approved' : 'rejected';
+            $evaluation->save();
+        }
 
-            if ($evalResult) {
-                $protocolStatus->previous_status = $protocolStatus->current_status;
+        // Check if there are three evaluations and all from different sinodals
+        $evaluations = $protocol->evaluations;
+        $evaluations = $evaluations->push($newEvaluation);
+        $uniqueSinodals = $evaluations->pluck('sinodal_id')->unique();
+        
+        if ($uniqueSinodals->count() == 3) {
+            $allApproved = $evaluations->every(function ($evaluation) {
+                return $evaluation->current_status === 'approved';
+            });
+
+            $protocolStatus->previous_status = $protocolStatus->current_status;
+
+            if ($allApproved) {
                 $protocolStatus->current_status = 'active';
-                $evaluation->current_status = 'approved';
-                $evaluation->save();
-                $protocolStatus->save();
             } else {
-                $protocolStatus->previous_status = $protocolStatus->current_status;
-                $protocolStatus->current_status = 'canceled';
-                $evaluation->current_status = 'rejected';
-                $evaluation->save();
-                $protocolStatus->save();
+                if ($protocolStatus->current_status === 'evaluatingFirst') {
+                    $protocolStatus->current_status = 'correcting';
+                } elseif ($protocolStatus->current_status === 'evaluatingSecond') {
+                    $protocolStatus->current_status = 'canceled';
+                }
             }
+
+            $protocolStatus->save();
         }
 
         return response()->json(['message' => 'Protocolo evaluado correctamente'], 200);
     }
+
 
     public function getProtocolEvaluation(Request $request)
     {
