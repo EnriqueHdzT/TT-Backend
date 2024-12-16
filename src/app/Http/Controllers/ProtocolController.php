@@ -116,7 +116,7 @@ class ProtocolController extends Controller
 
             return response()->json(['protocol' => $protocol], 201);
         } catch (Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 500);
+            return response()->json(['message' => $e->gMessage()], 500);
         }
     }
 
@@ -419,6 +419,56 @@ class ProtocolController extends Controller
         }
     }
 
+    public function getProDoc(Request $request, $protocol_id)
+    {
+        $protocol = Protocol::where('id', $protocol_id)->first();
+
+        if (!$protocol) {
+            return response()->json(['message' => 'Error'], 404);
+        }
+
+        $protocolPath = $protocol->pdf; // descomentar cuando exista la columna
+
+        $user = Auth::user();
+        $isStudent = $user->student;
+        $canAccess = false;
+
+        if ($isStudent) {
+            $protocols = $user->student->protocols;
+            if ($this->checkIfExists($protocol_id, $protocols)) {
+                $canAccess = true;
+            }
+        } else {
+            $staff = $user->staff;
+            switch ($staff->staff_type) {
+                case 'PresAcad':
+                case 'JefeDepAcad':
+                case 'SecEjec':
+                case 'SecTec':
+                case 'Presidente':
+                case 'AnaCATT':
+                    $canAccess = true;
+                    break;
+
+                case 'Prof':
+                    $protocols = $staff->protocols;
+                    if ($this->checkIfExists($protocol_id, $protocols)) {
+                        $canAccess = true;
+                    }
+                    break;
+            }
+        }
+
+        if ($canAccess) {
+            return $this->fileService->getFile($protocolPath);
+        } else {
+            return response()->json(
+                ['message' => 'No tienes permiso para acceder a este recurso'],
+                403
+            );
+        }
+    }
+
     public function listProtocols(Request $request)
     {
         $user = Auth::user();
@@ -562,4 +612,45 @@ class ProtocolController extends Controller
         }
     }
 
+    public function selectProtocol(Request $request)
+    {
+        // Validar los datos recibidos
+        $validator = Validator::make($request->all(), [
+            'protocol_id' => 'required|exists:protocols,id',
+            'user_id' => 'required|exists:users,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos inválidos.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            // Crear o actualizar el registro
+            $protocolRole = ProtocolRole::updateOrCreate(
+                [
+                    'protocol_id' => $request->protocol_id,
+                    'user_id' => $request->user_id,
+                ],
+                [
+                    'role' => 'sinodal',
+                ]
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Rol de sinodal asignado correctamente.',
+                'data' => $protocolRole,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al asignar el rol de sinodal.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }
