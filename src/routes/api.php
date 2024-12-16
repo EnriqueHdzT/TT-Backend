@@ -57,7 +57,7 @@ Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function
     // Protocol routes
     Route::get('/protocol/{id}', [ProtocolController::class, 'getProtocolData']);
     Route::post('/protocol', [ProtocolController::class, 'createProtocol']);
-    Route::put('/protocol/{id}', [ProtocolController::class, 'updateProtocol']);
+    Route::post('/protocol/{id}', [ProtocolController::class, 'updateProtocol']);
     Route::get('/getProtocolDoc/{id}', [ProtocolController::class, 'getProtocolDoc']);
     Route::get('/getProtocolDocByID/{id}', [ProtocolController::class, 'getProtocolDocByUUID']);
     Route::get('/listProtocols', [ProtocolController::class, 'listProtocols']);
