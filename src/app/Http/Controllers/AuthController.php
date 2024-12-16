@@ -111,7 +111,10 @@ class AuthController extends Controller
                     'expires_at' => now()->addMinutes(15),
                 ]);
                 $staff = $user->staff;
-                return response()->json(['token' => $token->plainTextToken, 'userType' => $staff->staff_type], 200);
+                if ($staff) {
+                    return response()->json(['token' => $token->plainTextToken, 'userType' => $staff->staff_type], 200);
+                }
+                return response()->json(['token' => $token->plainTextToken, 'userType' => ''], 200);
             }
 
             return response()->json(['message' => 'Credenciales incorrectas'], 401);
