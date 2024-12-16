@@ -31,6 +31,25 @@ class Protocol extends Model
         'pivot'
     ];
 
+    protected $casts = [
+        'keywords' => 'array',
+    ];
+
+    public function students()
+    {
+        return $this->hasMany(ProtocolRole::class, 'protocol_id')->where('role', 'student');
+    }
+
+    public function directors()
+    {
+        return $this->hasMany(ProtocolRole::class, 'protocol_id')->where('role', 'director');
+    }
+
+    public function sinodals()
+    {
+        return $this->hasMany(ProtocolRole::class, 'protocol_id')->where('role', 'sinodal');
+    }
+
     public function datesAndTerms()
     {
         return $this->belongsTo(DatesAndTerms::class, 'period');

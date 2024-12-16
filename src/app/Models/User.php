@@ -74,4 +74,9 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(Evaluation::class, 'sinodal_id');
     }
+
+    public function protocolRoles()
+    {
+        return $this->hasMany(ProtocolRole::class, 'user_id');
+    }
 }

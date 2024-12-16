@@ -28,12 +28,6 @@ Route::post('/recuperar-password', [AuthController::class, 'recuperarPassword'])
 Route::post('/reset-password/{token}', [AuthController::class, 'resetPassword']);
 Route::post('/ayuda', [AuthController::class, 'recibiremail']);
 
-// Protocol routes
-Route::get('/addProtocol/{id}', [ProtocolController::class, 'readProtocol']);
-Route::get('/addProtocol', [ProtocolController::class, 'readProtocols']);
-Route::put('/addProtocol/{id}', [ProtocolController::class, 'updateProtocol']);
-Route::delete('/addProtocol/{id}', [ProtocolController::class, 'deleteProtocol']);
-
 // Protected routes
 Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function () {
     // Auth routes
@@ -61,13 +55,25 @@ Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function
     Route::get('/checkUpload', [DatesAndTermsController::class, 'checkIfUploadIsAvailable']);
 
     // Protocol routes
-    Route::post('/createProtocol', [ProtocolController::class, 'createProtocol']);
+    Route::get('/protocol/{id}', [ProtocolController::class, 'getProtocolData']);
+    Route::post('/protocol', [ProtocolController::class, 'createProtocol']);
+    Route::put('/protocol/{id}', [ProtocolController::class, 'updateProtocol']);
+    Route::put('/validateProtocol/{protocol_id}', [ProtocolController::class, 'validateProtocol']);
+    Route::get('/getProtocol/{id}', [ProtocolController::class, 'getProtocol']);
     Route::get('/getProtocolDoc/{id}', [ProtocolController::class, 'getProtocolDoc']);
     Route::get('/getProDoc/{id}', [ProtocolController::class, 'getProDoc']);
     Route::get('/listProtocols', [ProtocolController::class, 'listProtocols']);
     Route::get('/getQuestionare', [ProtocolController::class, 'getQuestionare']);
 
 
+    Route::get('/getProtocolDocByID/{id}', [ProtocolController::class, 'getProtocolDocByUUID']);
+    Route::get('/listProtocols', [ProtocolController::class, 'listProtocols']);
+    Route::get('/getQuestionare', [ProtocolController::class, 'getQuestionare']);
+    Route::get('/allowedEval/{id}', [ProtocolController::class, 'allowedEvaluation']); 
+    Route::get('/getEvalProtData/{id}', [ProtocolController::class, 'getDataForEvaluation']);
+    Route::post('/evaluateProtocol/{id}', [ProtocolController::class, 'evaluateProtocol']);
+    Route::post('/getResponses', [ProtocolController::class, 'getProtocolEvaluation']);
+    Route::get('/monitoreo/{id}', [ProtocolController::class, 'getMonitorData']);
     // Academy routes
     Route::get('/academies', [AcademyController::class, 'getAllAcademies']);
 });
@@ -100,8 +106,6 @@ Route::get('/pregunta', [PublicacionesController::class, 'getPreguntas']);
 Route::get('/pregunta/{id}', [PublicacionesController::class, 'getPreguntaID']);
 Route::put('/pregunta/{id}', [PublicacionesController::class, 'updatePregunta']);
 Route::delete('/pregunta/{id}', [PublicacionesController::class, 'deletePregunta']);
-
-Route::get('/monitoreo/{id}', [MonitoreoController::class, 'getMonitoreo']);
 
 Route::post('/subir-imagen', [PublicacionesController::class, 'subirImagen']);
 Route::get('/ver-carpeta-drive', [PublicacionesController::class, 'verCarpetaDrive']);

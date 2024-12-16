@@ -19,8 +19,11 @@ use App\Models\Student;
 use App\Models\Protocol;
 use App\Models\ProtocolRole;
 use App\Models\ProtocolStatus;
+use App\Models\Evaluation;
 use App\Services\FileService;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class ProtocolController extends Controller
 {
@@ -208,11 +211,12 @@ class ProtocolController extends Controller
             $protocol_id = sprintf('%s%03d', $prefix, $nextNumber);
             $pdf = $request->file('pdf');
             if ($pdf) {
-                $protocol->fill([
-                    'pdf' => $pdf->store("uploads/{$protocol_id}"),
-                    'protocol_id' => $protocol_id
-                ]);
+                // if folder contains any pdf file, delete it
+                Storage::deleteDirectory("uploads/{$protocol_id}");
+                $protocol->pdf = $pdf->store("uploads/{$protocol_id}");
             }
+
+            $protocol->protocol_id = $protocol_id;
             $protocol->save();
 
             foreach ($studentIds as $studentId) {
@@ -289,6 +293,66 @@ class ProtocolController extends Controller
         return $staff;
     }
 
+    public function getProtocolData(string $id)
+    {
+        $user = Auth::user();
+
+        try {
+            $protocol = Protocol::findOrFail($id);
+            $term = DatesAndTerms::findOrFail($protocol->period);
+
+            $protocolData = [
+                'title' => $protocol->title,
+                'resume' => $protocol->resume,
+                'students' => [],
+                'directors' => [],
+                'sinodals' => [],
+                'term' => $term->cycle,
+                'keywords' => json_decode($protocol->keywords) ?? [],
+            ];
+
+            foreach ($protocol->students as $student) {
+                $protocolData['students'][] = [
+                    'email' => $student->person->email,
+                    'name' => $student->person->student->name,
+                    'lastname' => $student->person->student->lastname,
+                    'second_lastname' => $student->person->student->second_lastname ?? null,
+                ];
+            }
+
+            foreach ($protocol->directors as $director) {
+                $protocolData['directors'][] = [
+                    'email' => $director->person->email,
+                    'name' => $director->person->staff->name,
+                    'lastname' => $director->person->staff->lastname,
+                    'second_lastname' => $director->person->staff->second_lastname ?? null,
+                ];
+            }
+
+            foreach ($protocol->sinodals as $sinodal) {
+                $protocolData['sinodals'][] = [
+                    'email' => $sinodal->person->email,
+                    'name' => $sinodal->person->staff->name,
+                    'lastname' => $sinodal->person->staff->lastname,
+                    'second_lastname' => $sinodal->person->staff->second_lastname ?? null,
+                ];
+            }
+
+            return response()->json($protocolData, 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Protocolo no encontrado'], 404);
+        }
+    }
+
+    public function getProtocol($protocol_id){
+        $protocolo = Protocol::where('protocol_id', $protocol_id)->first();
+
+        if(!$protocolo){
+            return response()->json(['message' => 'Protocolo no encontrado'], 404);
+        }
+        return response()->json($protocolo, 200);
+    }
+
     public function readProtocol($id)
     {
         $protocol = Protocol::find($id);
@@ -320,28 +384,104 @@ class ProtocolController extends Controller
 
     public function updateProtocol(Request $request, $id)
     {
-        $request->validate([
-            'title_protocol' => 'required|string',
-            'student_id' => 'required|string|unique:students,student_id',
-            'staff_id' => 'required|string|unique:staff,staff_id',
-            'keywords' => 'required|string',
-            'protocol_doc' => 'required|binary',
-        ]);
+        try {
+            if (empty($request->all())) {
+                return response()->json(['message' => 'No se proporcionaron datos para actualizar'], 400);
+            }
+            $protocol = Protocol::findOrFail($id);
 
-        $protocol = Protocol::find($id);
+            $request->merge([
+                'students' => json_decode($request->input('students', '[]'), true),
+                'directors' => json_decode($request->input('directors', '[]'), true),
+                'sinodals' => json_decode($request->input('sinodals', '[]'), true),
+                'keywords' => json_decode($request->input('keywords', '[]'), true),
+            ]);
 
-        if (!$protocol) {
+            // Validate updated fields
+            $rules = [
+                'title' => 'string',
+                'resume' => 'string',
+                'students' => 'array|min:0|max:4',
+                'students.*.email' => 'string|email|distinct',
+                'directors' => 'array|min:0|max:2',
+                'directors.*.email' => 'string|email|distinct',
+                'sinodals' => 'array|min:0|max:3',
+                'sinodals.*.email' => 'string|email|distinct',
+                'keywords' => 'array|min:0|max:4',
+                'term' => 'string',
+                'pdf' => 'file|mimes:pdf|max:6144',
+            ];
+
+            $validator = Validator::make($request->all(), $rules);
+            if ($validator->fails()) {
+                return response()->json(['message' => $validator->errors()], 422);
+            }
+
+            // Update protocol fields if present in the request
+            if ($request->has('title')) {
+                $protocol->title = $request->title;
+            }
+            if ($request->has('resume')) {
+                $protocol->resume = $request->resume;
+            }
+            if ($request->has('keywords') && is_array($request->keywords) && count($request->keywords) > 0) {
+                $protocol->keywords = json_encode($request->keywords);
+            }
+            if ($request->hasFile('pdf')) {
+                if ($protocol->pdf) {
+                    Storage::delete($protocol->pdf);
+                }
+                $protocol->pdf = $request->file('pdf')->store("uploads/{$protocol->protocol_id}");
+            }
+
+            if ($request->has('term')) {
+                $newTerm = DatesAndTerms::where('cycle', $request->term)->first();
+                if (!$newTerm) {
+                    return response()->json(['message' => 'El periodo ingresado no es válido'], 400);
+                }
+                $protocol->period = $newTerm->id;
+            }
+
+            if ($request->has('students') && is_array($request->students) && count($request->students) > 0) {
+                $this->syncParticipants($protocol, 'students', $request->input('students', []));
+            }
+            if ($request->has('directors') && is_array($request->directors) && count($request->directors) > 0) {
+                $this->syncParticipants($protocol, 'directors', $request->input('directors', []));
+            }
+            if ($request->has('sinodals') && is_array($request->sinodals) && count($request->sinodals) > 0) {
+                $this->syncParticipants($protocol, 'sinodals', $request->input('sinodals', []));
+            }
+
+            $protocol->save();
+
+            return response()->json(['message' => 'Protocolo actualizado exitosamente'], 200);
+        } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Protocolo no encontrado'], 404);
+        } catch (Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+
+    private function syncParticipants(Protocol $protocol, string $relation, array $participants)
+    {
+        $existingParticipants = $protocol->{$relation};
+        $existingIds = $existingParticipants->pluck('user_id')->toArray();
+
+        $newEmails = collect($participants)->pluck('email')->toArray();
+        $newUsers = User::whereIn('email', $newEmails)->get();
+        $newIds = $newUsers->pluck('id')->toArray();
+
+        $toRemove = array_diff($existingIds, $newIds);
+        $toAdd = array_diff($newIds, $existingIds);
+
+        foreach ($toRemove as $userId) {
+            $protocol->{$relation}()->where('user_id', $userId)->delete();
         }
 
-        $protocol->title_protocol = $request->title_protocol;
-        $protocol->student_ID = $request->student_ID;
-        $protocol->staff_ID = $request->staff_ID;
-        $protocol->keywords = $request->keywords;
-        $protocol->protocol_doc = $request->protocol_doc;
-        $protocol->save();
-
-        return response()->json(['message' => 'Datos del protocolo cargados exitosamente'], 200);
+        // Add new participants
+        foreach ($toAdd as $userId) {
+            $protocol->{$relation}()->create(['user_id' => $userId]);
+        }
     }
 
     public function deleteProtocol($id)
@@ -369,7 +509,66 @@ class ProtocolController extends Controller
         }
     }
 
-    public function getProtocolDoc(Request $request, $protocol_id)
+    public function allowedEvaluation($protocolId)
+    {
+        $user = Auth::user();
+
+        $protocol = Protocol::find($protocolId);
+        if (!$protocol) {
+            return response()->json(['message' => 'Protocol not found'], 404);
+        }
+
+        $protocolStatus = $protocol->statusHistories[0];
+        if (!in_array($protocolStatus->current_status, ['evaluatingFirst', 'correcting', 'evaluatingSecond', 'active', 'canceled'])) {
+            return response()->json(['message' => 'Not allowed'], 403);
+        }
+
+        $protocolRole = $user->protocolRoles->where('protocol_id', $protocolId)->first();
+        if (!$protocolRole) {
+            return response()->json(['message' => 'Not allowed'], 403);
+        }
+
+        $permissions = match (true) {
+            ($protocolRole->role === 'sinodal' && in_array($protocolStatus->current_status, ['evaluatingFirst', 'evaluatingSecond'])) => 'write',
+            ($protocolRole->role === 'student' && in_array($protocolStatus->current_status, ['correcting', 'evaluatingSecond', 'canceled', 'active'])) => 'read',
+            ($protocolRole->role === 'director' && in_array($protocolStatus->current_status, ['correcting', 'evaluatingSecond', 'canceled', 'active'])) => 'read',
+            default => 'not allowed',
+        };
+
+
+        return response()->json(['permissions' => $permissions], 200);
+    }
+
+    public function validateProtocol($protocol_id){
+        if(!$protocol_id){
+            return response()->json(['message' => 'Protocolo no encontrado'], 404);
+        }
+        
+        $protocol = Protocol::where('protocol_id', $protocol_id)->first();
+        if(!$protocol){
+            return response()->json(['message' => 'Protocolo no encontrado'], 404);
+        }
+        $user = Auth::user();
+        $staff = $user->staff;
+
+        if(!$staff || !in_array($staff->staff_type, ['AnaCATT', 'SecEjec'])){
+            return response()->json(['message' => 'No tienes permiso para acceder a este recurso'], 403);
+        }
+
+        $protocolStatus = ProtocolStatus::where('protocol_id', $protocol->id)->first();
+
+        if($protocolStatus->current_status != 'validating'){ // Si ya tiene un status diferente de validating
+            return response()->json(['message' => 'El protocolo ya está validado'], 403);
+        }
+
+        $protocolStatus->previous_status = $protocolStatus->current_status;
+        $protocolStatus->current_status = 'classifying';
+        $protocolStatus->save();
+
+        return response()->json(['message' => 'Protocolo validado'], 200);
+    }
+
+    public function getProtocolDoc($protocol_id)
     {
         $protocol = Protocol::where('protocol_id', $protocol_id)->first();
 
@@ -419,14 +618,14 @@ class ProtocolController extends Controller
         }
     }
 
-    public function getProDoc(Request $request, $protocol_id)
-    {
-        $protocol = Protocol::where('id', $protocol_id)->first();
 
-        if (!$protocol) {
+  public function getProDoc(Request $request, $protocol_id)
+    {
+  
+        $protocol = Protocol::where('id', $protocol_id)->first();
+  if (!$protocol) {
             return response()->json(['message' => 'Error'], 404);
         }
-
         $protocolPath = $protocol->pdf; // descomentar cuando exista la columna
 
         $user = Auth::user();
@@ -467,6 +666,26 @@ class ProtocolController extends Controller
                 403
             );
         }
+  public function getProtocolDocByUUID(string $protocolId)
+    {
+        $canAccess = false;
+        $protocol = Protocol::whereId($protocolId)->first();
+  if (!$protocol) {
+            return response()->json(['message' => 'Error'], 404);
+        }
+        $filePath = $protocol->pdf;
+
+        $user = Auth::user();
+        $protocolRole = $user->protocolRoles->where('protocol_id', $protocolId);
+        if ($protocolRole[0]) {
+            $canAccess = true;
+        }
+
+        if ($canAccess) {
+            return $this->fileService->getFile($filePath);
+        }
+
+        return response()->json(['message' => 'No tienes permiso para acceder a este recurso'], 403);
     }
 
     public function listProtocols(Request $request)
@@ -652,5 +871,136 @@ class ProtocolController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    public function getDataForEvaluation($id)
+    {
+        $canAccess = false;
+        $protocol = Protocol::whereId($id)->first();
+
+        if (!$protocol) {
+            return response()->json(['message' => 'Error'], 404);
+        }
+
+        $user = Auth::user();
+
+        $protocolRole = $user->protocolRoles->where('protocol_id', $id);
+        if ($protocolRole[0]) {
+            $canAccess = true;
+        }
+
+        if ($canAccess) {
+            $reply = [
+                'protocol_id' => $protocol->protocol_id,
+            ];
+            return response()->json($reply, 200);
+        }
+
+        return response()->json(['message' => 'No tienes permiso para acceder a este recurso'], 403);
+    }
+
+    public function evaluateProtocol(Request $request, $id)
+    {
+        $user = Auth::user();
+
+        $protocol = Protocol::whereId($id)->first();
+        $protocolStatus = ProtocolStatus::where('protocol_id', $id)->first();
+        $protocolRole = $user->protocolRoles->where('protocol_id', $id)->where('role', 'sinodal')->first();
+        if (!$protocolRole && ($protocolStatus->current_status != 'evaluatingFirst' || $protocolStatus->current_status != 'evaluatingSecond')) {
+            return response()->json(['message' => 'Acceso denegado'], 403);
+        }
+
+        $evaluation = $protocol->evaluations->where('user_id', $user->id)->first();
+        $evalResult = $request->input('Aprobado')['validation'];
+
+        if (!$evaluation || $evaluation->current_status == 'pending') {
+            $newEvaluation = new Evaluation();
+            $newEvaluation->protocol_id = $id;
+            $newEvaluation->sinodal_id = $user->id;
+            $newEvaluation->evaluation_response = $request->json()->all();
+            $newEvaluation->current_status = $evalResult ? 'approved' : 'rejected';
+            $newEvaluation->save();
+        } else {
+            $evaluation->evaluation_response = $request->json()->all();
+            $evaluation->current_status = $evalResult ? 'approved' : 'rejected';
+            $evaluation->save();
+        }
+
+        // Check if there are three evaluations and all from different sinodals
+        $evaluations = $protocol->evaluations;
+        $evaluations = $evaluations->push($newEvaluation);
+        $uniqueSinodals = $evaluations->pluck('sinodal_id')->unique();
+
+        if ($uniqueSinodals->count() == 3) {
+            $allApproved = $evaluations->every(function ($evaluation) {
+                return $evaluation->current_status === 'approved';
+            });
+
+            $protocolStatus->previous_status = $protocolStatus->current_status;
+
+            if ($allApproved) {
+                $protocolStatus->current_status = 'active';
+            } else {
+                if ($protocolStatus->current_status === 'evaluatingFirst') {
+                    $protocolStatus->current_status = 'correcting';
+                } elseif ($protocolStatus->current_status === 'evaluatingSecond') {
+                    $protocolStatus->current_status = 'canceled';
+                }
+            }
+
+            $protocolStatus->save();
+        }
+
+        return response()->json(['message' => 'Protocolo evaluado correctamente'], 200);
+    }
+
+
+    public function getProtocolEvaluation(Request $request)
+    {
+        $protocolId = $request->input('id');
+        $sinodalId = $request->input('sinodal_id');
+        $evaluation = Evaluation::where('protocol_id', $protocolId)->where('sinodal_id', $sinodalId)->first();
+        if (!$evaluation) {
+            return response()->json(['message' => 'No se encontró la evaluación'], 404);
+        }
+
+        return response()->json($evaluation->evaluation_response, 200);
+    }
+
+    public function getMonitorData($id)
+    {
+        $protocol = Protocol::where('protocol_id', $id)->first();
+
+        if (!$protocol) {
+            return response()->json(['message' => 'Protocolo no encontrado'], 404);
+        }
+
+        $response = [];
+        $protocolStatus = $protocol->statusHistories[0];
+
+        $response['current_status'] = $protocolStatus->current_status;
+        $response['previous_status'] = $protocolStatus->previous_status;
+
+        if ($protocolStatus->current_status === 'selecting') {
+            $response['sinodals_count'] = ProtocolRole::where('protocol_id', $protocol->id)->where('role', 'sinodal')->count();
+        }
+        if ($protocolStatus->current_status === 'evaluatingFirst' || $protocolStatus->current_status === 'evaluatingSecond') {
+            $response['evaluations_count'] = Evaluation::where('protocol_id', $protocol->id)->where('current_status', ['approved', 'rejected'])->count();
+        }
+        if ($protocolStatus->current_status === 'active' || $protocolStatus->current_status === 'canceled' || $protocolStatus->current_status === 'correcting') {
+            $evaluations = Evaluation::where('protocol_id', $protocol->id)->where('current_status', ['approved', 'rejected'])->get();
+            if ($evaluations) {
+                foreach ($evaluations as $evaluation) {
+                    $user = User::where('id', $evaluation->sinodal_id)->first();
+                    $staff = $user->staff;
+                    $response['evaluations'][$staff->id] = [
+                        'name' => $staff->name,
+                        'lastname' => $staff->lastname,
+                        'second_lastname' => $staff->second_lastname,
+                        'result' => $evaluation->current_status
+                    ];
+                }
+            }
+        }
+
+        return response()->json($response, 200);
     }
 }
