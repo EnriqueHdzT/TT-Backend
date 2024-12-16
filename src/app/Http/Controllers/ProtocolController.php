@@ -209,8 +209,12 @@ class ProtocolController extends Controller
             $protocol_id = sprintf('%s%03d', $prefix, $nextNumber);
             $pdf = $request->file('pdf');
             if ($pdf) {
+                // if folder contains any pdf file, delete it
+                Storage::deleteDirectory("uploads/{$protocol_id}");
                 $protocol->pdf = $pdf->store("uploads/{$protocol_id}");
             }
+
+            $protocol->protocol_id = $protocol_id;
             $protocol->save();
 
             foreach ($studentIds as $studentId) {
@@ -371,35 +375,102 @@ class ProtocolController extends Controller
     public function updateProtocol(Request $request, $id)
     {
         try {
+            if (empty($request->all())) {
+                return response()->json(['message' => 'No se proporcionaron datos para actualizar'], 400);
+            }
             $protocol = Protocol::findOrFail($id);
-            $currentTerm = DatesAndTerms::where('id', $protocol->period)->firstorFail()->cycle;
-            if ($request->title !== null) {
+
+            $request->merge([
+                'students' => json_decode($request->input('students', '[]'), true),
+                'directors' => json_decode($request->input('directors', '[]'), true),
+                'sinodals' => json_decode($request->input('sinodals', '[]'), true),
+                'keywords' => json_decode($request->input('keywords', '[]'), true),
+            ]);
+
+            // Validate updated fields
+            $rules = [
+                'title' => 'string',
+                'resume' => 'string',
+                'students' => 'array|min:0|max:4',
+                'students.*.email' => 'string|email|distinct',
+                'directors' => 'array|min:0|max:2',
+                'directors.*.email' => 'string|email|distinct',
+                'sinodals' => 'array|min:0|max:3',
+                'sinodals.*.email' => 'string|email|distinct',
+                'keywords' => 'array|min:0|max:4',
+                'term' => 'string',
+                'pdf' => 'file|mimes:pdf|max:6144',
+            ];
+
+            $validator = Validator::make($request->all(), $rules);
+            if ($validator->fails()) {
+                return response()->json(['message' => $validator->errors()], 422);
+            }
+
+            // Update protocol fields if present in the request
+            if ($request->has('title')) {
                 $protocol->title = $request->title;
             }
-            if ($request->resume !== null) {
+            if ($request->has('resume')) {
                 $protocol->resume = $request->resume;
             }
-            if ($request->keywords !== null) {
+            if ($request->has('keywords') && is_array($request->keywords) && count($request->keywords) > 0) {
                 $protocol->keywords = json_encode($request->keywords);
             }
-            if ($request->term !== null) {
-
-                $protocol->period = $term->id;
-            }
-            if ($request->pdf !== null) {
-                Storage::delete($protocol->pdf);
-                $pdf = $request->file('pdf');
-                if ($pdf) {
-                    $protocol->fill([
-                        'pdf' => $pdf->store("uploads/{$protocol->id}"),
-
-                    ]);
+            if ($request->hasFile('pdf')) {
+                if ($protocol->pdf) {
+                    Storage::delete($protocol->pdf);
                 }
+                $protocol->pdf = $request->file('pdf')->store("uploads/{$protocol->protocol_id}");
             }
+
+            if ($request->has('term')) {
+                $newTerm = DatesAndTerms::where('cycle', $request->term)->first();
+                if (!$newTerm) {
+                    return response()->json(['message' => 'El periodo ingresado no es válido'], 400);
+                }
+                $protocol->period = $newTerm->id;
+            }
+
+            if ($request->has('students') && is_array($request->students) && count($request->students) > 0) {
+                $this->syncParticipants($protocol, 'students', $request->input('students', []));
+            }
+            if ($request->has('directors') && is_array($request->directors) && count($request->directors) > 0) {
+                $this->syncParticipants($protocol, 'directors', $request->input('directors', []));
+            }
+            if ($request->has('sinodals') && is_array($request->sinodals) && count($request->sinodals) > 0) {
+                $this->syncParticipants($protocol, 'sinodals', $request->input('sinodals', []));
+            }
+
             $protocol->save();
+
             return response()->json(['message' => 'Protocolo actualizado exitosamente'], 200);
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Protocolo no encontrado'], 404);
+        } catch (Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+
+    private function syncParticipants(Protocol $protocol, string $relation, array $participants)
+    {
+        $existingParticipants = $protocol->{$relation};
+        $existingIds = $existingParticipants->pluck('user_id')->toArray();
+
+        $newEmails = collect($participants)->pluck('email')->toArray();
+        $newUsers = User::whereIn('email', $newEmails)->get();
+        $newIds = $newUsers->pluck('id')->toArray();
+
+        $toRemove = array_diff($existingIds, $newIds);
+        $toAdd = array_diff($newIds, $existingIds);
+
+        foreach ($toRemove as $userId) {
+            $protocol->{$relation}()->where('user_id', $userId)->delete();
+        }
+
+        // Add new participants
+        foreach ($toAdd as $userId) {
+            $protocol->{$relation}()->create(['user_id' => $userId]);
         }
     }
 
@@ -680,7 +751,7 @@ class ProtocolController extends Controller
         $evaluations = $protocol->evaluations;
         $evaluations = $evaluations->push($newEvaluation);
         $uniqueSinodals = $evaluations->pluck('sinodal_id')->unique();
-        
+
         if ($uniqueSinodals->count() == 3) {
             $allApproved = $evaluations->every(function ($evaluation) {
                 return $evaluation->current_status === 'approved';

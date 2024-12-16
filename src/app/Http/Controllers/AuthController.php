@@ -110,13 +110,8 @@ class AuthController extends Controller
                 $accessToken->update([
                     'expires_at' => now()->addMinutes(15),
                 ]);
-
-                if (Staff::where('id', $user->id)->exists()) {
-
-                    return response()->json(['token' => $token->plainTextToken, 'userType' => Staff::find($user->id)->first()->staff_type], 200);
-                }
-
-                return response()->json(['token' => $token->plainTextToken, 'userType' => null], 200);
+                $staff = $user->staff;
+                return response()->json(['token' => $token->plainTextToken, 'userType' => $staff->staff_type], 200);
             }
 
             return response()->json(['message' => 'Credenciales incorrectas'], 401);
@@ -124,7 +119,6 @@ class AuthController extends Controller
             return response()->json(['message' => 'Hubo un error en el servidor', 'error' => $e->getMessage()], 500);
         }
     }
-    //Prueba de EMAIL
 
     public function logout(Request $request)
     {
