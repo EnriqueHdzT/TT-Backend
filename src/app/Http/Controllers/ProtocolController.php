@@ -343,6 +343,15 @@ class ProtocolController extends Controller
         }
     }
 
+    public function getProtocol($protocol_id){
+        $protocolo = Protocol::where('protocol_id', $protocol_id)->first();
+
+        if(!$protocolo){
+            return response()->json(['message' => 'Protocolo no encontrado'], 404);
+        }
+        return response()->json($protocolo, 200);
+    }
+
     public function readProtocol($id)
     {
         $protocol = Protocol::find($id);
@@ -527,6 +536,35 @@ class ProtocolController extends Controller
 
 
         return response()->json(['permissions' => $permissions], 200);
+    }
+
+    public function validateProtocol($protocol_id){
+        if(!$protocol_id){
+            return response()->json(['message' => 'Protocolo no encontrado'], 404);
+        }
+        
+        $protocol = Protocol::where('protocol_id', $protocol_id)->first();
+        if(!$protocol){
+            return response()->json(['message' => 'Protocolo no encontrado'], 404);
+        }
+        $user = Auth::user();
+        $staff = $user->staff;
+
+        if(!$staff || !in_array($staff->staff_type, ['AnaCATT', 'SecEjec'])){
+            return response()->json(['message' => 'No tienes permiso para acceder a este recurso'], 403);
+        }
+
+        $protocolStatus = ProtocolStatus::where('protocol_id', $protocol->id)->first();
+
+        if($protocolStatus->current_status != 'validating'){ // Si ya tiene un status diferente de validating
+            return response()->json(['message' => 'El protocolo ya está validado'], 403);
+        }
+
+        $protocolStatus->previous_status = $protocolStatus->current_status;
+        $protocolStatus->current_status = 'classifying';
+        $protocolStatus->save();
+
+        return response()->json(['message' => 'Protocolo validado'], 200);
     }
 
     public function getProtocolDoc($protocol_id)
