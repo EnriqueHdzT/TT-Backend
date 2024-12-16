@@ -683,4 +683,13 @@ class UsersController extends Controller
 
         return response()->json($response, 200);
     }
+
+    public function getAcademies(){
+        try {
+            $academies = Academy::all();
+            return response()->json(['academies' => $academies], 200);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error al obtener las academias'], 500);
+        }
+    }
 }

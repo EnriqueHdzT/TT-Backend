@@ -61,6 +61,11 @@ Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function
     Route::put('/validateProtocol/{protocol_id}', [ProtocolController::class, 'validateProtocol']);
     Route::get('/getProtocol/{id}', [ProtocolController::class, 'getProtocol']);
     Route::get('/getProtocolDoc/{id}', [ProtocolController::class, 'getProtocolDoc']);
+    Route::get('/getProDoc/{id}', [ProtocolController::class, 'getProDoc']);
+    Route::get('/listProtocols', [ProtocolController::class, 'listProtocols']);
+    Route::get('/getQuestionare', [ProtocolController::class, 'getQuestionare']);
+
+
     Route::get('/getProtocolDocByID/{id}', [ProtocolController::class, 'getProtocolDocByUUID']);
     Route::get('/listProtocols', [ProtocolController::class, 'listProtocols']);
     Route::get('/getQuestionare', [ProtocolController::class, 'getQuestionare']);
@@ -69,7 +74,6 @@ Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function
     Route::post('/evaluateProtocol/{id}', [ProtocolController::class, 'evaluateProtocol']);
     Route::post('/getResponses', [ProtocolController::class, 'getProtocolEvaluation']);
     Route::get('/monitoreo/{id}', [ProtocolController::class, 'getMonitorData']);
-    
     // Academy routes
     Route::get('/academies', [AcademyController::class, 'getAllAcademies']);
 });
@@ -105,3 +109,9 @@ Route::delete('/pregunta/{id}', [PublicacionesController::class, 'deletePregunta
 
 Route::post('/subir-imagen', [PublicacionesController::class, 'subirImagen']);
 Route::get('/ver-carpeta-drive', [PublicacionesController::class, 'verCarpetaDrive']);
+
+Route::get('/clasicar/{id}',[ProtocolController::class, 'getProtocol']);
+Route::get('/academias',[UsersController::class, 'getAcademies']);
+
+Route::post('/clasificarProtocolo',[ProtocolController::class, 'clasificarProtocolo']);
+Route::post('/selectProtocol',[ProtocolController::class, 'selectProtocol']);
