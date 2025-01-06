@@ -69,13 +69,14 @@ Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function
     Route::get('/getProtocolDocByID/{id}', [ProtocolController::class, 'getProtocolDocByUUID']);
     Route::get('/listProtocols', [ProtocolController::class, 'listProtocols']);
     Route::get('/getQuestionare', [ProtocolController::class, 'getQuestionare']);
-    Route::get('/allowedEval/{id}', [ProtocolController::class, 'allowedEvaluation']); 
+    Route::get('/allowedEval/{id}', [ProtocolController::class, 'allowedEvaluation']);
     Route::get('/getEvalProtData/{id}', [ProtocolController::class, 'getDataForEvaluation']);
     Route::post('/evaluateProtocol/{id}', [ProtocolController::class, 'evaluateProtocol']);
     Route::post('/getResponses', [ProtocolController::class, 'getProtocolEvaluation']);
     Route::get('/monitoreo/{id}', [ProtocolController::class, 'getMonitorData']);
-    Route::get('/selectProtocol/{id}',[ProtocolController::class, 'selectProtocol']);
-    
+    Route::get('/selectProtocol/{id}', [ProtocolController::class, 'selectProtocol']);
+    Route::put('/rechazarprotocolo/{id}', [ProtocolController::class, 'rejectProtocol']);
+
     // Academy routes
     Route::get('/academies', [AcademyController::class, 'getAllAcademies']);
 });
@@ -112,8 +113,7 @@ Route::delete('/pregunta/{id}', [PublicacionesController::class, 'deletePregunta
 Route::post('/subir-imagen', [PublicacionesController::class, 'subirImagen']);
 Route::get('/ver-carpeta-drive', [PublicacionesController::class, 'verCarpetaDrive']);
 
-Route::get('/clasicar/{id}',[ProtocolController::class, 'getProtocol']);
-Route::get('/academias',[UsersController::class, 'getAcademies']);
+Route::get('/clasicar/{id}', [ProtocolController::class, 'getProtocol']);
+Route::get('/academias', [UsersController::class, 'getAcademies']);
 
-Route::post('/clasificarProtocolo',[ProtocolController::class, 'clasificarProtocolo']);
-
+Route::post('/clasificarProtocolo', [ProtocolController::class, 'clasificarProtocolo']);

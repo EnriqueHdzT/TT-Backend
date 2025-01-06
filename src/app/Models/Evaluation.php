@@ -23,12 +23,14 @@ class Evaluation extends Model
         'protocol_id',
         'sinodal_id',
         'current_status',
-        'evaluation_response',
+        'first_evaluation',
+        'second_evaluation',
     ];
 
-    // Ensure that `evaluation_response` is cast to an array for easier handling
+    // Ensure that evaluations is cast to an array for easier handling
     protected $casts = [
-        'evaluation_response' => 'array',
+        'first_evaluation' => 'array',
+        'second_evaluation' => 'array',
     ];
 
     // Disable timestamps if not needed

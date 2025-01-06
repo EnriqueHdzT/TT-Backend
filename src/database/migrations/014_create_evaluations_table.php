@@ -15,7 +15,8 @@ return new class extends Migration
             $table->uuid('protocol_id')->index();
             $table->uuid('sinodal_id')->index();
             $table->enum('current_status', ['pending', 'approved', 'rejected'])->default('pending');
-            $table->json('evaluation_response')->default('{}');
+            $table->json('first_evaluation')->default('{}');
+            $table->json('second_evaluation')->default('{}');
             $table->timestamps();
 
             $table->primary(['protocol_id', 'sinodal_id']);
