@@ -76,6 +76,7 @@ Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function
     Route::get('/monitoreo/{id}', [ProtocolController::class, 'getMonitorData']);
     Route::get('/selectProtocol/{id}', [ProtocolController::class, 'selectProtocol']);
     Route::put('/rechazarprotocolo/{id}', [ProtocolController::class, 'rejectProtocol']);
+    Route::delete('/deleteProtocol/{id}', [ProtocolController::class, 'deleteProtocol']);
 
     // Academy routes
     Route::get('/academies', [AcademyController::class, 'getAllAcademies']);

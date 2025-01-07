@@ -196,7 +196,12 @@ class ProtocolController extends Controller
 
             [$year, $term] = explode('/', $datesAndTerms->cycle);
             $year = (int)$year;
-            $letter = ($term == '1') ? 'B' : ($year++ && 'A');
+            if ($term == '1') {
+                $letter = 'B';
+            } else {
+                $year++;
+                $letter = 'A';
+            }
 
             $prefix = "{$year}-{$letter}";
             $maxProtocol  = Protocol::where('period', $datesAndTerms->id)
@@ -300,6 +305,7 @@ class ProtocolController extends Controller
 
         try {
             $protocol = Protocol::findOrFail($id);
+            $status = ProtocolStatus::where('protocol_id', $id)->latest()->first();
             $term = DatesAndTerms::findOrFail($protocol->period);
 
             $protocolData = [
@@ -309,6 +315,7 @@ class ProtocolController extends Controller
                 'directors' => [],
                 'sinodals' => [],
                 'term' => $term->cycle,
+                'status' => $status->current_status,
                 'keywords' => json_decode($protocol->keywords) ?? [],
             ];
 
@@ -390,7 +397,10 @@ class ProtocolController extends Controller
             if (empty($request->all())) {
                 return response()->json(['message' => 'No se proporcionaron datos para actualizar'], 400);
             }
+            $user = Auth::user();
+            $isStudent = $user->student;
             $protocol = Protocol::findOrFail($id);
+            $status = ProtocolStatus::where('protocol_id', $id)->first();
 
             $request->merge([
                 'students' => json_decode($request->input('students', '[]'), true),
@@ -455,6 +465,12 @@ class ProtocolController extends Controller
             }
 
             $protocol->save();
+
+            if ($isStudent && $status->current_status == 'correcting') {
+                $status->previous_status = $status->current_status;
+                $status->current_status = 'evaluatingSecond';
+                $status->save();
+            }
 
             return response()->json(['message' => 'Protocolo actualizado exitosamente'], 200);
         } catch (ModelNotFoundException $e) {
@@ -769,10 +785,11 @@ class ProtocolController extends Controller
         $protocols = $protocolsQuery->paginate($elementsPerPage, ['*'], 'page', $page);
 
         // Include current_status and previous_status in the response
-        $protocolsData = $protocols->map(function ($protocol) {
+        $protocolsData = $protocols->map(function ($protocol, $isStudent) {
             $protocolArray = $protocol->toArray();
             $protocolArray['current_status'] = $protocol->status->current_status ?? null;
             $protocolArray['previous_status'] = $protocol->status->previous_status ?? null;
+            $protocolArray['enable_button'] = $this->isButtonEnabled($protocol);
             return $protocolArray;
         });
 
@@ -781,6 +798,76 @@ class ProtocolController extends Controller
             'current_page' => $protocols->currentPage(),
             'total_pages' => $protocols->lastPage(),
         ], 200);
+    }
+
+    private function isButtonEnabled($protocol)
+    {
+        $returnValue = false;
+        $user = auth()->user();
+        if ($user->staff) {
+            $status = $protocol->status->current_status;
+
+            if (in_array($status, ['validating', 'classifying'], true) && in_array($user->staff->staff_type, ['AnaCATT', 'SecEjec', 'SecTec', 'Presidente'], true)) {
+                $returnValue = true;
+            }
+
+            if ($status === 'selecting') {
+                foreach ($protocol->directors as $director) {
+                    if ($director->user_id === $user->id) {
+                        return false;
+                    }
+                }
+
+                foreach ($protocol->sinodals as $sinodal) {
+                    if ($sinodal->user_id === $user->id) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            if ($status === 'evaluatingFirst') {
+                $sinodals = $protocol->sinodals;
+                foreach ($sinodals as $sinodal) {
+                    if ($sinodal->user_id === $user->id) {
+                        $returnValue = true;
+                        break;
+                    }
+                }
+
+                $evaluations = $protocol->evaluations->where('sinodal_id', $user->id);
+                if ($evaluations->count() > 0 && $evaluations->first()->current_status !== 'pending') {
+                    return false;
+                }
+
+                return true;
+            }
+
+            if ($status === 'evaluatingSecond') {
+                $sinodals = $protocol->sinodals;
+                foreach ($sinodals as $sinodal) {
+                    if ($sinodal->user_id === $user->id) {
+                        $returnValue = true;
+                        break;
+                    }
+                }
+                $count = Evaluation::where('protocol_id', $protocol->id)
+                    ->where('sinodal_id', $user->id)
+                    ->whereRaw("second_evaluation::jsonb != '{}'::jsonb")
+                    ->count();
+
+                if ($count > 0) {
+                    $returnValue = false;
+                }
+            }
+        } else {
+            if ($protocol->status->current_status === 'correcting') {
+                $returnValue = true;
+            }
+        }
+
+        return $returnValue;
     }
 
     public function checkIfExists($protocol_id, $protocols)
@@ -914,7 +1001,11 @@ class ProtocolController extends Controller
             $newEvaluation = new Evaluation();
             $newEvaluation->protocol_id = $id;
             $newEvaluation->sinodal_id = $user->id;
-            $newEvaluation->first_evaluation = $request->json()->all();
+            if ($protocolStatus->current_status == 'evaluatingSecond') {
+                $newEvaluation->second_evaluation = $request->json()->all();
+            } else {
+                $newEvaluation->first_evaluation = $request->json()->all();
+            }
             $newEvaluation->current_status = $evalResult ? 'approved' : 'rejected';
             $newEvaluation->save();
             $wasNewEvaluationCreated = true;
@@ -1037,11 +1128,13 @@ class ProtocolController extends Controller
                         'lastname' => $staff->lastname,
                         'result' => $evaluation->current_status
                     ];
-                    $response['secondEvaluations'][$staff->id] = [
-                        'name' => $staff->name,
-                        'lastname' => $staff->lastname,
-                        'result' => $evaluation->current_status
-                    ];
+                    if ($protocolStatus->current_status !== 'evaluatingSecond' && $protocolStatus->current_status !== 'correcting') {
+                        $response['secondEvaluations'][$staff->id] = [
+                            'name' => $staff->name,
+                            'lastname' => $staff->lastname,
+                            'result' => $evaluation->current_status
+                        ];
+                    }
                 }
             }
         }
