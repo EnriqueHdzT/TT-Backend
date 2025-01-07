@@ -738,6 +738,14 @@ class ProtocolController extends Controller
                         });
                     }
 
+                    // Obtener las academias del staff
+                    $academies = $staff->academies->pluck('id')->toArray();
+
+                    // Filtrar protocolos que están relacionados con las academias del staff
+                    $protocolsQuery->whereHas('academies', function ($query) use ($academies) {
+                        $query->whereIn('academy_id', $academies);
+                    });
+
                     /* // Filter protocols with current_status of 'classifying'
                     $protocolsQuery->whereHas('status', function ($query) {
                         $query->where('current_status', 'selecting');

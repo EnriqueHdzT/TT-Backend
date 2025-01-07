@@ -69,4 +69,9 @@ class Protocol extends Model
     {
         return $this->hasOne(ProtocolStatus::class, 'protocol_id');
     }
+
+    public function academies()
+    {
+        return $this->belongsToMany(Academy::class, 'protocol_academy', 'protocol_id', 'academy_id');
+    }
 }
