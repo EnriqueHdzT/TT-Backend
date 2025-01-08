@@ -800,6 +800,36 @@ class ProtocolController extends Controller
         ], 200);
     }
 
+    public function getProtocolFilters()
+    {
+        $user = Auth::user();
+        $isStudent = $user->student;
+        $filters = [];
+
+        if ($isStudent) {
+            return response()->json((object) [], 200);
+        } else {
+            $filters['cycles'] = DatesAndTerms::getAllSchoolCyclesAsArray();
+            $staff = $user->staff;
+            switch ($staff->staff_type) {
+                case 'PresAcad':
+                case 'JefeDepAcad':
+                case 'SecEjec':
+                case 'SecTec':
+                case 'Presidente':
+                case 'AnaCATT':
+                    
+                    break;
+
+                case 'Prof':
+                    
+                    break;
+            }
+        }
+
+        return response()->json($filters, 200);
+    }
+
     private function isButtonEnabled($protocol)
     {
         $returnValue = false;
