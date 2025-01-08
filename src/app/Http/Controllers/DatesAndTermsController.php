@@ -124,10 +124,7 @@ class DatesAndTermsController extends Controller
     public function getAllSchoolCyclesAsArray()
     {
         try {
-            $schoolCycles = DatesAndTerms::orderByRaw("CAST(split_part(cycle, '/', 1) AS INTEGER) DESC")
-                ->orderByRaw("CAST(split_part(cycle, '/', 2) AS INTEGER) DESC")
-                ->pluck('cycle')
-                ->toArray();
+            $schoolCycles = DatesAndTerms::getAllSchoolCyclesAsArray();
 
             if (empty($schoolCycles)) {
                 return response()->json([], 404);
