@@ -719,6 +719,7 @@ class ProtocolController extends Controller
         $cycle = $request->cycle;
         $page = $request->page ?? 1;
         $searchBar = $request->searchBar;
+        $fetchFilters = $request->fetchFilters;
         $orderBy = $request->orderBy;
 
         if ($isStudent) {
@@ -770,6 +771,12 @@ class ProtocolController extends Controller
             }
         }
 
+        $filters = null;
+
+        if($fetchFilters && !$isStudent) {
+            $filters = $this->getProtocolFilters($protocolsQuery);
+        }
+
         if ($searchBar) {
             $protocolsQuery->where(function ($query) use ($searchBar) {
                 $query->whereRaw('protocol_id ILIKE ?', ['%' . $searchBar . '%'])
@@ -797,7 +804,53 @@ class ProtocolController extends Controller
             'protocols' => $protocolsData,
             'current_page' => $protocols->currentPage(),
             'total_pages' => $protocols->lastPage(),
+            'filters' => $filters,
         ], 200);
+    }
+
+    public function getProtocolFilters($protocolsQuery)
+    {
+        // Obtener los valores únicos de cycles, academies, statuses
+        $cycles = $protocolsQuery->with('datesAndTerms')
+                                        ->get()
+                                        ->pluck('datesAndTerms.cycle')
+                                        ->unique()
+                                        ->values()
+                                        ->all();
+
+        $academies = $protocolsQuery->with('academies')
+                                        ->get()
+                                        ->pluck('academies.*.name')
+                                        ->flatten()
+                                        ->unique()
+                                        ->values()
+                                        ->all();
+
+        $raw_statuses = $protocolsQuery->with('status')
+                                        ->get()
+                                        ->pluck('status.current_status')
+                                        ->unique()
+                                        ->values()
+                                        ->all();
+
+        // Obtener las traducciones de los statuses
+        $translations = DB::table('protocol_status_translations')
+            ->whereIn('raw_name', $raw_statuses)
+            ->pluck('name', 'raw_name');
+
+        // Mapear las traducciones a un formato adecuado
+        $statuses = [];
+        foreach ($raw_statuses as $status) {
+            $statuses[$translations[$status]] = $status;
+        }
+
+        $filters = [
+            'cycles' => $cycles,
+            'academies' => $academies,
+            'statuses' => $statuses,
+        ];
+
+        return $filters;
     }
 
     private function isButtonEnabled($protocol)
