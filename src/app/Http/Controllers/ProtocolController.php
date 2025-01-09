@@ -810,7 +810,44 @@ class ProtocolController extends Controller
             $protocolArray = $protocol->toArray();
             $protocolArray['current_status'] = $protocol->status->current_status ?? null;
             $protocolArray['previous_status'] = $protocol->status->previous_status ?? null;
+            $protocolArray['cycle'] = $protocolArray["dates_and_terms"]["cycle"] ?? null;
             $protocolArray['enable_button'] = $this->isButtonEnabled($protocol);
+
+            unset($protocolArray['dates_and_terms']);
+            unset($protocolArray['academies']);
+            unset($protocolArray['status']);
+
+            // Incluir los estudiantes relacionados
+            $protocolArray['students'] = $protocol->studentsData->map(function ($student) {
+                return [
+                    'name' => $student->name,
+                    'lastname' => $student->lastname,
+                    'second_lastname' => $student->second_lastname,
+                    'curriculum' => $student->curriculum,
+                    'career' => $student->career,
+                ];
+            });
+
+            // Incluir los directores relacionados
+            $protocolArray['directors'] = $protocol->directorsData->map(function ($director) {
+                return [
+                    'name' => $director->name,
+                    'lastname' => $director->lastname,
+                    'second_lastname' => $director->second_lastname,
+                    'precedence' => $director->precedence,
+                ];
+            });
+
+            // Incluir los sinodales relacionados
+            $protocolArray['sinodals'] = $protocol->sinodalsData->map(function ($sinodal) {
+                return [
+                    'name' => $sinodal->name,
+                    'lastname' => $sinodal->lastname,
+                    'second_lastname' => $sinodal->second_lastname,
+                    'academies' => $sinodal->academies->pluck('name')->toArray(),
+                ];
+            });
+
             return $protocolArray;
         });
 
