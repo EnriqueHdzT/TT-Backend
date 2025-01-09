@@ -63,6 +63,7 @@ Route::group(['middleware' => ['auth:sanctum', 'update.token.expiry']], function
     Route::get('/getProtocolDoc/{id}', [ProtocolController::class, 'getProtocolDoc']);
     Route::get('/getProDoc/{id}', [ProtocolController::class, 'getProDoc']);
     Route::get('/listProtocols', [ProtocolController::class, 'listProtocols']);
+    Route::get('/getProtocolFilters', [ProtocolController::class, 'getProtocolFilters']);
     Route::get('/getQuestionare', [ProtocolController::class, 'getQuestionare']);
 
 
