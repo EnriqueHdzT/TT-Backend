@@ -720,7 +720,8 @@ class ProtocolController extends Controller
         $page = $request->page ?? 1;
         $searchBar = $request->searchBar;
         $fetchFilters = $request->fetchFilters;
-        $orderBy = $request->orderBy;
+        $status = $request->status;
+        $academy = $request->academy;
 
         if ($isStudent) {
             $protocolsQuery = $user->student->protocols();
@@ -763,17 +764,35 @@ class ProtocolController extends Controller
                         $query->whereIn('academy_id', $academies);
                     });
 
-                    /* // Filter protocols with current_status of 'classifying'
+                    // Omitir protocolos que están en estado 'validating' y 'classifying'
                     $protocolsQuery->whereHas('status', function ($query) {
-                        $query->where('current_status', 'selecting');
-                    }); */
+                        $query->whereNotIn('current_status', ['validating', 'classifying']);
+                    });
+
                     break;
+            }
+
+            // Si se proporciona el estado, aplicar el filtro
+            if ($status && $status != 'Todos') {
+                $protocolsQuery->whereHas('status', function ($query) use ($status) {
+                    $query->where('current_status', $status);
+                });
+            }
+
+            // Si se proporciona el nombre de la academia, obtener su ID y aplicar el filtro
+            if ($academy && $academy != 'Todas') {
+                $academyId = Academy::where('name', $academy)->pluck('id')->first();
+                if ($academyId) {
+                    $protocolsQuery->whereHas('academies', function ($query) use ($academyId) {
+                        $query->where('academy_id', $academyId);
+                    });
+                }
             }
         }
 
         $filters = null;
 
-        if($fetchFilters && !$isStudent) {
+        if ($fetchFilters && !$isStudent) {
             $filters = $this->getProtocolFilters($protocolsQuery);
         }
 
@@ -783,11 +802,6 @@ class ProtocolController extends Controller
                     ->orWhereRaw('title ILIKE ?', ['%' . $searchBar . '%']);
             });
         }
-
-        // if ($orderBy) {
-        //     $protocolsQuery->join('protocol_statuses', 'protocols.id', '=', 'protocol_statuses.protocol_id')
-        //                    ->orderByRaw("protocol_statuses.current_status = ? DESC", [$orderBy]);
-        // }
 
         $protocols = $protocolsQuery->paginate($elementsPerPage, ['*'], 'page', $page);
 
@@ -812,26 +826,26 @@ class ProtocolController extends Controller
     {
         // Obtener los valores únicos de cycles, academies, statuses
         $cycles = $protocolsQuery->with('datesAndTerms')
-                                        ->get()
-                                        ->pluck('datesAndTerms.cycle')
-                                        ->unique()
-                                        ->values()
-                                        ->all();
+            ->get()
+            ->pluck('datesAndTerms.cycle')
+            ->unique()
+            ->values()
+            ->all();
 
         $academies = $protocolsQuery->with('academies')
-                                        ->get()
-                                        ->pluck('academies.*.name')
-                                        ->flatten()
-                                        ->unique()
-                                        ->values()
-                                        ->all();
+            ->get()
+            ->pluck('academies.*.name')
+            ->flatten()
+            ->unique()
+            ->values()
+            ->all();
 
         $raw_statuses = $protocolsQuery->with('status')
-                                        ->get()
-                                        ->pluck('status.current_status')
-                                        ->unique()
-                                        ->values()
-                                        ->all();
+            ->get()
+            ->pluck('status.current_status')
+            ->unique()
+            ->values()
+            ->all();
 
         // Obtener las traducciones de los statuses
         $translations = DB::table('protocol_status_translations')
