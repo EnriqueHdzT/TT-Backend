@@ -355,11 +355,41 @@ class ProtocolController extends Controller
     public function getProtocol($protocol_id)
     {
         $protocolo = Protocol::where('id', $protocol_id)->first();
-
         if (!$protocolo) {
             return response()->json(['message' => 'Protocolo no encontrado'], 404);
         }
-        return response()->json($protocolo, 200);
+
+        $protocolData = $protocolo->toArray();
+
+        $protocolData['students'] = $protocolo->studentsData->map(function ($student) {
+            return [
+                'email' => $student->user->email,
+                'name' => $student->name,
+                'lastname' => $student->lastname,
+                'second_lastname' => $student->second_lastname,
+            ];
+        });
+
+        $protocolData['directors'] = $protocolo->directorsData->map(function ($director) {
+            return [
+                'email' => $director->user->email,
+                'name' => $director->name,
+                'lastname' => $director->lastname,
+                'second_lastname' => $director->second_lastname,
+            ];
+        });
+
+        $protocolData['sinodals'] = $protocolo->sinodalsData->map(function ($sinodal) {
+            return [
+                'email' => $sinodal->user->email,
+                'name' => $sinodal->name,
+                'lastname' => $sinodal->lastname,
+                'second_lastname' => $sinodal->second_lastname,
+            ];
+        });
+
+        
+        return response()->json($protocolData, 200);
     }
 
     public function readProtocol($id)
