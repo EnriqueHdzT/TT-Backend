@@ -35,6 +35,42 @@ class Protocol extends Model
         'keywords' => 'array',
     ];
 
+    public function studentsData()
+    {
+        return $this->hasManyThrough(
+            Student::class, // Modelo destino
+            ProtocolRole::class, // Modelo intermedio
+            'protocol_id', // Llave foránea en ProtocolRole
+            'id', // Llave foránea en Student
+            'id', // Llave local en Protocol
+            'user_id' // Llave local en ProtocolRole
+        )->where('protocol_roles.role', 'student');
+    }
+
+    public function directorsData()
+    {
+        return $this->hasManyThrough(
+            Staff::class, // Modelo destino
+            ProtocolRole::class, // Modelo intermedio
+            'protocol_id', // Llave foránea en ProtocolRole
+            'id', // Llave foránea en Staff
+            'id', // Llave local en Protocol
+            'user_id' // Llave local en ProtocolRole
+        )->where('protocol_roles.role', 'director');
+    }
+
+    public function sinodalsData()
+    {
+        return $this->hasManyThrough(
+            Staff::class, // Modelo destino
+            ProtocolRole::class, // Modelo intermedio
+            'protocol_id', // Llave foránea en ProtocolRole
+            'id', // Llave foránea en Staff
+            'id', // Llave local en Protocol
+            'user_id' // Llave local en ProtocolRole
+        )->where('protocol_roles.role', 'sinodal')->with('academies');
+    }
+
     public function students()
     {
         return $this->hasMany(ProtocolRole::class, 'protocol_id')->where('role', 'student');
