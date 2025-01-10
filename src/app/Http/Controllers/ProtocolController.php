@@ -388,7 +388,7 @@ class ProtocolController extends Controller
             ];
         });
 
-        
+
         return response()->json($protocolData, 200);
     }
 
@@ -724,9 +724,13 @@ class ProtocolController extends Controller
         $user = Auth::user();
         $staff = $user->staff;
 
-        if ($staff->staff_type == 'SecEjec' || $staff->staff_type == 'SecTec' || $staff->staff_type == 'Presidente' || $staff->staff_type == 'AnaCATT') {
-            $canAccess = true;
+
+        if ($staff) {
+            if ($staff->staff_type == 'SecEjec' || $staff->staff_type == 'SecTec' || $staff->staff_type == 'Presidente' || $staff->staff_type == 'AnaCATT') {
+                $canAccess = true;
+            }
         }
+
         $protocolRole = $user->protocolRoles->where('protocol_id', $protocolId);
 
         if (count($protocolRole) > 0) {
