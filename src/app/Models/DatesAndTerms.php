@@ -68,4 +68,12 @@ class DatesAndTerms extends Model
             ->orderByRaw("CAST(split_part(cycle, '/', 2) AS INTEGER) DESC")
             ->value('cycle') ?? '';
     }
+
+    public static function getAllSchoolCyclesAsArray()
+    {
+        return self::orderByRaw("CAST(split_part(cycle, '/', 1) AS INTEGER) DESC")
+            ->orderByRaw("CAST(split_part(cycle, '/', 2) AS INTEGER) DESC")
+            ->pluck('cycle')
+            ->toArray();
+    }
 }

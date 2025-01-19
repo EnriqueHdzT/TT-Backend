@@ -500,7 +500,6 @@ class UsersController extends Controller
             'email' => [
                 'required',
                 'email',
-                'regex:/^[a-zA-Z0-9._%+-]+@ipn\.mx$/',
             ],
             'name' => 'required|string',
             'lastName' => 'required|string',
@@ -541,12 +540,14 @@ class UsersController extends Controller
             return response()->json(['message' => 'Error al crear el profesor'], 500);
         }
 
-        foreach ($request->academy as $academyName) {
-            $academy = Academy::where('name', $academyName)->first();
-            if ($academy) {
-                $staff->academies()->attach($academy->id);
-            } else {
-                return response()->json(['message' => 'Academia no encontrada'], 404);
+        if (!empty($request->academy)) {
+            foreach ($request->academy as $academyName) {
+                $academy = Academy::where('name', $academyName)->first();
+                if ($academy) {
+                    $staff->academies()->attach($academy->id);
+                } else {
+                    return response()->json(['message' => 'Academia no encontrada'], 404);
+                }
             }
         }
 
@@ -684,7 +685,8 @@ class UsersController extends Controller
         return response()->json($response, 200);
     }
 
-    public function getAcademies(){
+    public function getAcademies()
+    {
         try {
             $academies = Academy::all();
             return response()->json(['academies' => $academies], 200);

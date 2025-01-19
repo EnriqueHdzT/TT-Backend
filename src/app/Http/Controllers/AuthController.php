@@ -114,7 +114,7 @@ class AuthController extends Controller
                 if ($staff) {
                     return response()->json(['token' => $token->plainTextToken, 'userType' => $staff->staff_type], 200);
                 }
-                return response()->json(['token' => $token->plainTextToken, 'userType' => ''], 200);
+                return response()->json(['token' => $token->plainTextToken, 'userType' => 'Student'], 200);
             }
 
             return response()->json(['message' => 'Credenciales incorrectas'], 401);

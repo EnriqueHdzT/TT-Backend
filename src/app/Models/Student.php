@@ -26,6 +26,12 @@ class Student extends Model
         'phone_number',
     ];
 
+    protected $hidden = [
+        'laravel_through_key',
+        'created_at',
+        'updated_at',
+    ];
+
     // Definir la relación con el modelo User
     public function user()
     {

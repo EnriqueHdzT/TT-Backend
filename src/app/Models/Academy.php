@@ -17,6 +17,12 @@ class Academy extends Model
         'name'
     ];
 
+    protected $hidden = [
+        'created_at',
+        'updated_at',
+        'pivot'
+    ];
+
     public function staff()
     {
         return $this->belongsToMany(Staff::class, 'staff_academy');
